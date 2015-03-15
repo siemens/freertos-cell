@@ -80,7 +80,6 @@
 	.global vector_svc
 	.global vPortRestoreTaskContext
 	.global vPortInstallFreeRTOSVectorTable
-	.global vPortInstallIrqStack
 
 	.align 5
 _freertos_vector_table:
@@ -105,12 +104,6 @@ _freertos_vector_table:
 	vector unused
 	vector fiq
 
-	.align 4
-	/* Stack must be 8 byte aligned */
-_irq_stack_end:
-	.skip 0x1000
-_irq_stack_top:
-
 .align 4
 .type vPortInstallFreeRTOSVectorTable, %function
 vPortInstallFreeRTOSVectorTable:
@@ -120,20 +113,6 @@ vPortInstallFreeRTOSVectorTable:
 	dsb
 	isb
 	bx lr
-
-.type vPortInstallIrqStack, %function
-vPortInstallIrqStack:
-      mrs     r0, cpsr          /* Switch to IRQ mode */
-      and     r1, r0, #MODE_MASK/* Save old mode in r1 */
-      bic     r0, r0, r1        /* Clear mode bits */
-      orr     r0, r0, #IRQ_MODE /* Enter IRQ mode */
-      msr     cpsr, r0
-      ldr     sp, =_irq_stack_top   /* Set irq stack */
-      mrs     r0, cpsr          /* Switch back to old mode */
-      bic     r0, r0, #MODE_MASK
-      orr     r0, r0, r1        /* Restore old mode from r1 */
-      msr     cpsr, r0
-      bx      lr
 
 .macro portSAVE_CONTEXT
 

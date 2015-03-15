@@ -36,7 +36,6 @@ static void mmio_write32(void *addr, uint32_t v)
 int gic_v2_init(void)
 {
   void *gicbase = get_gic_baseaddr();
-  vPortInstallIrqStack();
   gicd_base = gicbase + GICD_OFFSET;
   gicc_base = gicbase + GICC_OFFSET;
   //printk("gicc_base=%x gicd_base=%x\n\r", (unsigned)gicc_base, (unsigned)gicd_base);

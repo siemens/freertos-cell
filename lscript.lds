@@ -8,6 +8,8 @@ SECTIONS {
         . = ALIGN(4096);
         . = . + 0x1000;
         stack_top = .;
+        . = . + 0x1000;
+	irq_stack_top = .;
         bss_start = .;
         .bss            : {
                 *(.bss)
