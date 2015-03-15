@@ -4,6 +4,7 @@
 .extern inmate_main
 
 .section ".boot", "ax"
+.global vectors
 .align 5
 vectors:
 	b	vector_reset

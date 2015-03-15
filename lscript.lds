@@ -1,3 +1,5 @@
+ENTRY(vectors)
+
 SECTIONS {
 	/* jailhouse arm inmates have to start at address zero */
         . = 0x0;
