@@ -3,7 +3,6 @@
 #include <string.h>
 #include "serial_printf.h"
 
-#define UART7_BASE 0x01C29C00
 #define UART_CLOCK_REG	((void *)0x01c2006c)
 #define UART_GATE_NR	23
 

@@ -17,8 +17,6 @@
 #define ARM_SLEEP asm volatile("wfi" : : : "memory")
 #define ARRAY_SIZE(a) (sizeof(a)/sizeof((a)[0]))
 
-#define UART7_IRQ 52
-#define UART7_BASE 0x01C29C00
 #define UART_BUFSIZE 72
 
 #define UART_LOCK xSemaphoreTake(uart_sema, portMAX_DELAY)
