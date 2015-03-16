@@ -1,5 +1,7 @@
 .PHONY: clean all
 
+src = $(shell pwd)
+
 CROSS_COMPILE ?= arm-linux-gnueabihf-
 
 CC = $(CROSS_COMPILE)gcc
@@ -9,7 +11,7 @@ CFLAGS += -mcpu=cortex-a7 -mtune=cortex-a7 -mfpu=vfpv4-d16 -mfloat-abi=hard -O2
 CFLAGS += -DCONFIG_MACH_SUN7I=1
 CFLAGS += -Wall
 CFLAGS += -I $(BSP_ROOTDIR)/include
-CFLAGS += -I $(PWD)/freertos/Source/include -I $(PWD)/freertos-runtime -I $(PWD)/freertos/Source/portable/GCC/ARM_A7jailhouse
+CFLAGS += -I $(src)/freertos/Source/include -I $(src)/freertos-runtime -I $(src)/freertos/Source/portable/GCC/ARM_A7jailhouse -I $(src)
 
 LDFLAGS += -T lscript.lds
 
