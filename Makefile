@@ -10,8 +10,7 @@ LD = $(CROSS_COMPILE)ld
 CFLAGS += -mcpu=cortex-a7 -mtune=cortex-a7 -mfpu=vfpv4-d16 -mfloat-abi=hard -O2
 CFLAGS += -DCONFIG_MACH_SUN7I=1
 CFLAGS += -Wall -MD
-CFLAGS += -I $(BSP_ROOTDIR)/include
-CFLAGS += -I $(src)/freertos/Source/include -I $(src)/freertos-runtime -I $(src)/freertos/Source/portable/GCC/ARM_A7jailhouse -I $(src)
+CFLAGS += -I $(src) -I $(src)/freertos/Source/include -I $(src)/freertos-runtime -I $(src)/freertos/Source/portable/GCC/ARM_A7jailhouse
 
 LDFLAGS += -T lscript.lds
 
@@ -35,6 +34,8 @@ OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS) freertos-demo.o boot_stub.o
 
 all: $(EXE_STEM).bin
 
+DEPS := $(OBJS:.o=.d)
+
 $(EXE_STEM).elf: $(OBJS) $(LIBS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
@@ -45,8 +46,6 @@ clean:
 	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin
 
 distclean: clean
-	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin
-
-DEPS := $(OBJS:.o=.d)
+	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin $(DEPS)
 
 -include $(DEPS)
