@@ -70,12 +70,17 @@ void serial_irq_rx_enable(void)
   mmio_write32(uart_ier, 5 | mmio_read32(uart_ier)); /* ERBFI + ELSI */
 }
 
+static int serial_ready(void)
+{
+  uint32_t *uart_lsr = (void*)(UART7_BASE + UART_LSR);
+  return UART_LSR_THRE & mmio_read32(uart_lsr); /* Transmit hold register empty */
+}
+
 void serial_putchar(uint32_t c)
 {
   uint32_t *uart_tx = (void*)(UART7_BASE + UART_TX);
-  uint32_t *uart_lsr = (void*)(UART7_BASE + UART_LSR);
 redo:
-  while(!(UART_LSR_THRE & mmio_read32(uart_lsr)))
+  while(!serial_ready())
     ; /* Wait for empty transmit */
   mmio_write32(uart_tx, c);
   if('\n' == c) {
