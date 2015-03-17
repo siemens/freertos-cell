@@ -28,7 +28,8 @@ FREERTOS_OBJS = freertos/Source/queue.o \
 	freertos/Source/tasks.o
 
 FREERTOS_RUNTIME_OBJS = freertos-runtime/string.o \
-	freertos-runtime/serial_printf.o
+	freertos-runtime/serial.o \
+	freertos-runtime/printf-stdarg.o
 
 OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS) freertos-demo.o boot_stub.o
 
