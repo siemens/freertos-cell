@@ -77,6 +77,7 @@
 #include "gic-v2.h"
 #include "string.h"
 #include "serial.h"
+#include "printf-stdarg.h"
 
 /* Scheduler include files. */
 #include "FreeRTOS.h"
@@ -350,10 +351,12 @@ static void testTask( void *pvParameters )
 {
   unsigned id = (unsigned)pvParameters;
   TickType_t period = ++id * pdMS_TO_TICKS(100);
+  char buf[128];
   unsigned cnt = 0;
   TickType_t pxPreviousWakeTime = xTaskGetTickCount();
   while(pdTRUE) {
-    UART_OUTPUT("T%02u\tperiod:%5u;\tloop:%5u;\ttick:%6u\n\r", id, (unsigned)period, cnt++, (unsigned)xTaskGetTickCount());
+    sprintf(buf, "T%02u\tperiod:%5u;\tloop:%5u;\ttick:%6u\n\r", id, (unsigned)period, cnt++, (unsigned)xTaskGetTickCount());
+    UART_OUTPUT(buf);
 #if 0
     if(0x7 == (0x7 & cnt)) /* Force a task switch */
       taskYIELD();
@@ -647,7 +650,7 @@ void inmate_main(void)
       NULL, 								/* The parameter passed to the task */
       tskIDLE_PRIORITY, /* The priority assigned to the task. */
       NULL );								    /* The task handle is not required, so NULL is passed. */
-  if(0) for(i = 0; i < 2; i++) {
+  if(1) for(i = 0; i < 2; i++) {
     xTaskCreate( floatTask, /* The function that implements the task. */
         "float", /* The text name assigned to the task - for debug only; not used by the kernel. */
         configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */

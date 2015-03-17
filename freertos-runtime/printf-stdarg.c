@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <stdint.h>
 #include "serial.h"
+#include "printf-stdarg.h"
 
 #define putchar(c) serial_putchar(c)
 
