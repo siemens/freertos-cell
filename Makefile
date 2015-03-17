@@ -6,6 +6,7 @@ CROSS_COMPILE ?= arm-linux-gnueabihf-
 
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
+AR = $(CROSS_COMPILE)ar
 
 CFLAGS += -mcpu=cortex-a7 -mtune=cortex-a7 -mfpu=vfpv4-d16 -mfloat-abi=hard -O2
 CFLAGS += -DCONFIG_MACH_SUN7I=1
@@ -29,24 +30,31 @@ FREERTOS_OBJS = freertos/Source/queue.o \
 
 FREERTOS_RUNTIME_OBJS = freertos-runtime/string.o \
 	freertos-runtime/serial.o \
-	freertos-runtime/printf-stdarg.o
+	freertos-runtime/printf-stdarg.o \
+	freertos-runtime/lib1funcs.o
 
-OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS) freertos-demo.o boot_stub.o
+RUNTIME_OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS)
+OBJS = freertos-demo.o boot_stub.o
+
+RUNTIME_AR = libfreertos.a
 
 all: $(EXE_STEM).bin
 
 DEPS := $(OBJS:.o=.d)
 
-$(EXE_STEM).elf: $(OBJS) $(LIBS)
+$(EXE_STEM).elf: $(OBJS) $(RUNTIME_AR)
 	$(LD) $(LDFLAGS) -o $@ $^
+
+$(RUNTIME_AR): $(RUNTIME_OBJS)
+	$(AR) rv $@ $^
 
 %.bin: %.elf
 	$(CROSS_COMPILE)objcopy -O binary $< $@
 
 clean:
-	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin
+	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin $(RUNTIME_OBJS) $(RUNTIME_AR)
 
 distclean: clean
-	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin $(DEPS)
+	rm -f $(DEPS)
 
 -include $(DEPS)
