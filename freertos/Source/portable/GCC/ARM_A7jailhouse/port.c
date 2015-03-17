@@ -1,4 +1,4 @@
-/*
+/* {{{1 License
     FreeRTOS V8.2.0 - Copyright (C) 2015 Real Time Engineers Ltd.
     All rights reserved
 
@@ -65,7 +65,11 @@
     mission critical applications that require provable dependability.
 
     1 tab == 4 spaces!
-*/
+
+    Author:
+      Dr. Johann Pfefferl <johann.pfefferl@siemens.com>
+      Siemens AG
+}}} */
 
 /* Standard includes. */
 #include <stdlib.h>

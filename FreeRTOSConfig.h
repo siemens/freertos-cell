@@ -1,4 +1,4 @@
-/*
+/* {{{1 License
     FreeRTOS V8.2.0 - Copyright (C) 2015 Real Time Engineers Ltd.
     All rights reserved
 
@@ -65,7 +65,12 @@
     mission critical applications that require provable dependability.
 
     1 tab == 4 spaces!
-*/
+
+    Author:
+      Dr. Johann Pfefferl <johann.pfefferl@siemens.com>
+      Siemens AG
+}}} */
+
 
 #ifndef FREERTOS_CONFIG_H
 #define FREERTOS_CONFIG_H
@@ -111,7 +116,7 @@
 //#define configCPU_CLOCK_HZ						(960UL*1000*1000)
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION	1
 #define configUSE_TICKLESS_IDLE					0
-#define configTICK_RATE_HZ						( ( TickType_t ) 1000 )
+#define configTICK_RATE_HZ						( ( TickType_t ) 24000 )
 //#define configPERIPHERAL_CLOCK_HZ  				( 33333000UL )
 #define configUSE_PREEMPTION					1
 #define configUSE_IDLE_HOOK						0
@@ -125,7 +130,7 @@
 #define configIDLE_SHOULD_YIELD					1
 #define configUSE_MUTEXES						1
 #define configQUEUE_REGISTRY_SIZE				8
-#define configCHECK_FOR_STACK_OVERFLOW			2
+#define configCHECK_FOR_STACK_OVERFLOW			0
 #define configUSE_RECURSIVE_MUTEXES				1
 #define configUSE_MALLOC_FAILED_HOOK			1
 #define configUSE_APPLICATION_TASK_TAG			0
