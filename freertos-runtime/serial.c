@@ -79,12 +79,7 @@ static int serial_ready(void)
 void serial_putchar(uint32_t c)
 {
   uint32_t *uart_tx = (void*)(UART7_BASE + UART_TX);
-redo:
   while(!serial_ready())
     ; /* Wait for empty transmit */
   mmio_write32(uart_tx, c);
-  if('\n' == c) {
-    c = '\r'; /* Append a "carriage return" */
-    goto redo;
-  }
 }
