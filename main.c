@@ -609,7 +609,8 @@ void inmate_main(void)
   unsigned i;
 
   prvSetupHardware();
-  vSemaphoreCreateBinary(uart_sema);
+  uart_sema = xSemaphoreCreateBinary();
+  xSemaphoreGive(uart_sema);
 
   xTaskCreate( uartTask, /* The function that implements the task. */
       "uartstat", /* The text name assigned to the task - for debug only; not used by the kernel. */
