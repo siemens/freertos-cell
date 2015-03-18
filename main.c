@@ -93,8 +93,8 @@
 
 #define UART_BUFSIZE 72
 
-#define UART_LOCK xSemaphoreTake(uart_sema, portMAX_DELAY)
-#define UART_UNLOCK xSemaphoreGive(uart_sema)
+#define UART_LOCK xSemaphoreTake(uart_mutex, portMAX_DELAY)
+#define UART_UNLOCK xSemaphoreGive(uart_mutex)
 #define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); UART_UNLOCK;} } while(0)
 
 /* }}} */
@@ -111,7 +111,7 @@ int printf(const char *format, ...);
 
 /* {{{1 Global variables */
 static TaskHandle_t uart_task_handle;
-static SemaphoreHandle_t uart_sema;
+static SemaphoreHandle_t uart_mutex;
 sio_fd_t ser_dev;
 /* }}} */
 
@@ -592,8 +592,7 @@ void inmate_main(void)
   unsigned i;
 
   prvSetupHardware();
-  uart_sema = xSemaphoreCreateBinary();
-  xSemaphoreGive(uart_sema);
+  uart_mutex = xSemaphoreCreateMutex();
 
   xTaskCreate( uartTask, /* The function that implements the task. */
       "uartstat", /* The text name assigned to the task - for debug only; not used by the kernel. */
