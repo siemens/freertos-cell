@@ -46,7 +46,7 @@ $(EXE_STEM).elf: $(OBJS) $(RUNTIME_AR)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 $(RUNTIME_AR): $(RUNTIME_OBJS)
-	$(AR) rv $@ $^
+	$(AR) -srcv $@ $^
 
 %.bin: %.elf
 	$(CROSS_COMPILE)objcopy -O binary $< $@
