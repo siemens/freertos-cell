@@ -34,7 +34,7 @@ FREERTOS_RUNTIME_OBJS = freertos-runtime/string.o \
 	freertos-runtime/lib1funcs.o
 
 RUNTIME_OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS)
-OBJS = freertos-demo.o boot_stub.o
+OBJS = main.o boot_stub.o
 
 RUNTIME_AR = libfreertos.a
 
