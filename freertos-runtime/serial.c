@@ -8,6 +8,7 @@
 #error Only support for Banana Pi board at the moment
 #endif
 
+#define UART7_BASE 0x01C29C00
 #define UART_CLOCK_REG	((void *)0x01c2006c)
 #define UART_GATE_NR	23
 
@@ -48,7 +49,7 @@ static void mmio_write32(void *addr, uint32_t val)
   *((volatile uint32_t*)addr) = val;
 }
 
-void serial_init(void)
+void *serial_init(void)
 {
 	unsigned divisor = DIV_ROUND_CLOSEST(UART_CLK, 16 * UART_BAUDRATE);
   void *uart_base = (void*)UART7_BASE;
@@ -67,6 +68,7 @@ void serial_init(void)
 	mmio_write32(uart_base + UART_DLL, 0xff & divisor); /* Divisor Latch Low Register */
 	mmio_write32(uart_base + UART_DLM, 0xff & (divisor >> 8)); /* Divisor Latch High Register */
 	mmio_write32(uart_base + UART_LCR, ~UART_LCR_DLAB & mmio_read32(uart_base + UART_LCR));
+  return uart_base;
 }
 
 void serial_irq_rx_enable(void)

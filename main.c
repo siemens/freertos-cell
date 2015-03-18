@@ -547,17 +547,12 @@ static void prvSetupHardware(void)
   unsigned apsr;
   static unsigned long io_dev_map[2];
 
-  serial_init();
+  io_dev_map[0] = (unsigned long)serial_init();
   show_cache_mmu_status("MMU/Cache status at entry");
   printf("Initializing the HW...\n\r");
   if(USE_CACHE_MMU) hardware_cpu_caches_off();
   gic_v2_init();
-  io_dev_map[0] = (unsigned long)gic_v2_gicd_get_address();
-#ifdef CONFIG_MACH_SUN7I
-  io_dev_map[1] = UART7_BASE;
-#else
-  io_dev_map[1] = io_dev_map[0]; // duplicate entry from GIC
-#endif
+  io_dev_map[1] = (unsigned long)gic_v2_gicd_get_address();
   if(USE_CACHE_MMU) hardware_mmu_ptable_setup(io_dev_map, ARRAY_SIZE(io_dev_map));
   if(USE_CACHE_MMU) hardware_cpu_cache_mmu_enable();
   /* Replace the exception vector table by a FreeRTOS variant */
