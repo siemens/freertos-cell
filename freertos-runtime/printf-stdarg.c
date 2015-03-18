@@ -170,6 +170,11 @@ static int print( char **out, const char *format, va_list args )
 				pc += printi (out, va_arg( args, int ), 16, 0, width, pad, 'a');
 				continue;
 			}
+			if( *format == 'p' ) {
+        pc += prints (out, "0x", width, pad);
+				pc += printi (out, va_arg( args, int ), 16, 0, 8, PAD_ZERO, 'a');
+				continue;
+			}
 			if( *format == 'X' ) {
 				pc += printi (out, va_arg( args, int ), 16, 0, width, pad, 'A');
 				continue;

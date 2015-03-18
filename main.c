@@ -120,15 +120,12 @@ void vAssertCalled( const char * pcFile, unsigned long ulLine )
 {
   volatile unsigned long ul = 0;
 
-  ( void ) pcFile;
-  ( void ) ulLine;
-
   vTaskSuspendAll();
   taskENTER_CRITICAL();
   {
     /* Set ul to a non-zero value using the debugger to step out of this
        function. */
-    printf("%s %s: line=%lu\n\r", __func__, pcFile, ulLine);
+    printf("%s %s: line=%u\n\r", __func__, pcFile, (unsigned)ulLine);
     while( ul == 0 ) {
       portNOP();
     }
