@@ -87,37 +87,9 @@
  * See http://www.freertos.org/a00110.html.
  *----------------------------------------------------------*/
 
-/*
- * The FreeRTOS Cortex-A port implements a full interrupt nesting model.
- *
- * Interrupts that are assigned a priority at or below
- * configMAX_API_CALL_INTERRUPT_PRIORITY (which counter-intuitively in the ARM
- * generic interrupt controller [GIC] means a priority that has a numerical
- * value above configMAX_API_CALL_INTERRUPT_PRIORITY) can call FreeRTOS safe API
- * functions and will nest.
- *
- * Interrupts that are assigned a priority above
- * configMAX_API_CALL_INTERRUPT_PRIORITY (which in the GIC means a numerical
- * value below configMAX_API_CALL_INTERRUPT_PRIORITY) cannot call any FreeRTOS
- * API functions, will nest, and will not be masked by FreeRTOS critical
- * sections (although it is necessary for interrupts to be globally disabled
- * extremely briefly as the interrupt mask is updated in the GIC).
- *
- * FreeRTOS functions that can be called from an interrupt are those that end in
- * "FromISR".  FreeRTOS maintains a separate interrupt safe API to enable
- * interrupt entry to be shorter, faster, simpler and smaller.
- *
- * The Zynq implements 256 unique interrupt priorities.  For the purpose of
- * setting configMAX_API_CALL_INTERRUPT_PRIORITY 255 represents the lowest
- * priority.
- */
-#define configMAX_API_CALL_INTERRUPT_PRIORITY	0
-
-//#define configCPU_CLOCK_HZ						(960UL*1000*1000)
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION	1
 #define configUSE_TICKLESS_IDLE					0
-#define configTICK_RATE_HZ						( ( TickType_t ) 1000 )
-//#define configPERIPHERAL_CLOCK_HZ  				( 33333000UL )
+#define configTICK_RATE_HZ						( ( TickType_t ) 24000 )
 #define configUSE_PREEMPTION					1
 #define configUSE_IDLE_HOOK						0
 #define configUSE_TICK_HOOK						0
@@ -192,8 +164,7 @@ nothing to return to.  To avoid this define configTASK_RETURN_ADDRESS to 0.  */
 /*
  * The application must provide a function that configures a peripheral to
  * create the FreeRTOS tick interrupt, then define configSETUP_TICK_INTERRUPT()
- * in FreeRTOSConfig.h to call the function.  This file contains a function
- * that is suitable for use on the Zynq MPU.  FreeRTOS_Tick_Handler() must
+ * in FreeRTOSConfig.h to call the function. FreeRTOS_Tick_Handler() must
  * be installed as the peripheral's interrupt handler.
  */
 void vConfigureTickInterrupt( void );
@@ -204,6 +175,30 @@ void vClearTickInterrupt( void );
 
 /* The following constant describe the hardware GIC */
 #define configUNIQUE_INTERRUPT_PRIORITIES				16
+
+/*
+ * The FreeRTOS Cortex-A port implements a full interrupt nesting model.
+ *
+ * Interrupts that are assigned a priority at or below
+ * configMAX_API_CALL_INTERRUPT_PRIORITY (which counter-intuitively in the ARM
+ * generic interrupt controller [GIC] means a priority that has a numerical
+ * value above configMAX_API_CALL_INTERRUPT_PRIORITY) can call FreeRTOS safe API
+ * functions and will nest.
+ *
+ * Interrupts that are assigned a priority above
+ * configMAX_API_CALL_INTERRUPT_PRIORITY (which in the GIC means a numerical
+ * value below configMAX_API_CALL_INTERRUPT_PRIORITY) cannot call any FreeRTOS
+ * API functions, will nest, and will not be masked by FreeRTOS critical
+ * sections (although it is necessary for interrupts to be globally disabled
+ * extremely briefly as the interrupt mask is updated in the GIC).
+ *
+ * FreeRTOS functions that can be called from an interrupt are those that end in
+ * "FromISR".  FreeRTOS maintains a separate interrupt safe API to enable
+ * interrupt entry to be shorter, faster, simpler and smaller.
+ *
+ * Setting this value to zero means that nesting interrupts are not used.
+ */
+#define configMAX_API_CALL_INTERRUPT_PRIORITY	0
 
 #endif /* FREERTOS_CONFIG_H */
 
