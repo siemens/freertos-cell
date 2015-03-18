@@ -3,6 +3,10 @@
 #include <string.h>
 #include "serial.h"
 
+#ifndef CONFIG_MACH_SUN7I
+#error Only support for Banana Pi board at the moment
+#endif
+
 #define UART_CLOCK_REG	((void *)0x01c2006c)
 #define UART_GATE_NR	23
 
