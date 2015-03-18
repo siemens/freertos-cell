@@ -40,7 +40,7 @@ RUNTIME_AR = libfreertos.a
 
 all: $(EXE_STEM).bin
 
-DEPS := $(OBJS:.o=.d)
+DEPS := $(OBJS:.o=.d) $(RUNTIME_OBJS:.o=.d)
 
 $(EXE_STEM).elf: $(OBJS) $(RUNTIME_AR)
 	$(LD) $(LDFLAGS) -o $@ $^
