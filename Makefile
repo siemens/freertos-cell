@@ -7,6 +7,7 @@ CROSS_COMPILE ?= arm-linux-gnueabihf-
 CC = $(CROSS_COMPILE)gcc
 LD = $(CROSS_COMPILE)ld
 AR = $(CROSS_COMPILE)ar
+OBJCOPY = $(CROSS_COMPILE)objcopy
 
 CFLAGS += -mcpu=cortex-a15 -mtune=cortex-a15 -mfpu=vfpv4-d16 -mfloat-abi=hard -O2
 CFLAGS += -DCONFIG_MACH_SUN7I=1
@@ -49,7 +50,7 @@ $(RUNTIME_AR): $(RUNTIME_OBJS)
 	$(AR) -srcv $@ $^
 
 %.bin: %.elf
-	$(CROSS_COMPILE)objcopy -O binary $< $@
+	$(OBJCOPY) -O binary $< $@
 
 clean:
 	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin $(RUNTIME_OBJS) $(RUNTIME_AR)
