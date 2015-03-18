@@ -162,6 +162,17 @@ static int print( char **out, const char *format, va_list args )
 				pc += prints (out, s?s:"(null)", width, pad);
 				continue;
 			}
+			if( *format == 'l' ) {
+        ++format;
+        if( *format == 'd' ) {
+          pc += printi (out, va_arg( args, long ), 10, 1, width, pad, 'a');
+          continue;
+        }
+        if( *format == 'u' ) {
+          pc += printi (out, va_arg( args, long ), 10, 0, width, pad, 'a');
+          continue;
+        }
+			}
 			if( *format == 'd' ) {
 				pc += printi (out, va_arg( args, int ), 10, 1, width, pad, 'a');
 				continue;
