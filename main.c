@@ -284,44 +284,18 @@ void vConfigureTickInterrupt( void )
   /* Register the standard FreeRTOS Cortex-A tick handler as the timer's
      interrupt handler.  The handler clears the interrupt using the
      configCLEAR_TICK_INTERRUPT() macro, which is defined in FreeRTOSConfig.h. */
-	gic_v2_irq_set_prio(TIMER_IRQ, portLOWEST_USABLE_INTERRUPT_PRIORITY);
-	gic_v2_irq_enable(TIMER_IRQ);
-	timer_init(BEATS_PER_SEC);
+  gic_v2_irq_set_prio(TIMER_IRQ, portLOWEST_USABLE_INTERRUPT_PRIORITY);
+  gic_v2_irq_enable(TIMER_IRQ);
+  timer_init(BEATS_PER_SEC);
 }
 
 
 static void handle_uart_irq(void)
 {
-#ifdef CONFIG_MACH_SUN7I
-  volatile unsigned *uart_rbr = (void*)(UART7_BASE + 0x0); /* Receive buffer register */
-  volatile unsigned *uart_iir = (void*)(UART7_BASE + 0x8); /* INTERRUPT IDENTITY REGISTER */
-  volatile unsigned *uart_lsr = (void*)(UART7_BASE + 0x14);/* Line status register */
-  volatile unsigned *uart_usr = (void*)(UART7_BASE + 0x7C);/* UART status register */
-  unsigned iir_val;
-  iir_val = 0xf & *uart_iir;
-  switch(iir_val) {
-    case 0x7: /* Busy detect indication */
-      printf("USR=%x\n\r", *uart_usr);
-      break;
-    case 0x6: /* Receiver line status */
-      printf("LSR=%x\n\r", *uart_lsr);
-      break;
-    case 0x4: /* Received data available */
-    case 12:  /* Character timeout indication */
-      {
-        uint32_t v = *uart_rbr;
-        BaseType_t do_yield = pdFALSE;
-        xTaskNotifyFromISR(uart_task_handle, v, eSetValueWithOverwrite, &do_yield);
-        portYIELD_FROM_ISR(do_yield);
-      }
-      break;
-    case 1: /* None */
-      break;
-    default:
-      printf("UNHANDLED: %x\n\r", iir_val);
-      break;
-  }
-#endif
+  uint32_t v = serial_irq_getchar();
+  BaseType_t do_yield = pdFALSE;
+  xTaskNotifyFromISR(uart_task_handle, v, eSetValueWithOverwrite, &do_yield);
+  portYIELD_FROM_ISR(do_yield);
 }
 
 void vApplicationIRQHandler(unsigned int irqn)

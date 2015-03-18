@@ -1,5 +1,6 @@
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include "serial.h"
 
@@ -86,4 +87,33 @@ void serial_putchar(uint32_t c)
   while(!serial_ready())
     ; /* Wait for empty transmit */
   mmio_write32(uart_tx, c);
+}
+
+int serial_irq_getchar(void)
+{
+  int r = 0;
+  volatile uint32_t *uart_rbr = (void*)(UART7_BASE + 0x0); /* Receive buffer register */
+  volatile uint32_t *uart_iir = (void*)(UART7_BASE + 0x8); /* INTERRUPT IDENTITY REGISTER */
+  volatile uint32_t *uart_lsr = (void*)(UART7_BASE + 0x14);/* Line status register */
+  volatile uint32_t *uart_usr = (void*)(UART7_BASE + 0x7C);/* UART status register */
+  unsigned iir_val;
+  iir_val = 0xf & *uart_iir;
+  switch(iir_val) {
+    case 0x7: /* Busy detect indication */
+      printf("USR=%x\n\r", *uart_usr);
+      break;
+    case 0x6: /* Receiver line status */
+      printf("LSR=%x\n\r", *uart_lsr);
+      break;
+    case 0x4: /* Received data available */
+    case 12:  /* Character timeout indication */
+      r = *uart_rbr;
+      break;
+    case 1: /* None */
+      break;
+    default:
+      printf("UNHANDLED: %x\n\r", iir_val);
+      break;
+  }
+  return r;
 }
