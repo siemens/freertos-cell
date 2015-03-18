@@ -433,9 +433,9 @@ static void hardware_fpu_enable(void)
       "orr	%0, %0, #(0x3 << 20);"    /* Enable access to cp10 */
       "orr	%0, %0, #(0x3 << 22);"    /* Enable access to cp11 */
       "mcr	p15, 0, %0, c1, c0, 2;"
-      "vmrs	%0, FPEXC;"
+      "fmrx	%0, FPEXC;"
       "orr	%0, %0, #(1<<30);"  /* Set FPEXC.EN = 1 */
-      "vmsr	FPEXC, %0;"
+      "fmxr	FPEXC, %0;"
       : "=r" (reg) /* outputs */
       : /* No inputs */
       : /* clobbered */
