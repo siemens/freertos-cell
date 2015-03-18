@@ -109,7 +109,7 @@ static void mmio_write32(void *addr, uint32_t v)
   *((volatile uint32_t *)addr) = v;
 }
 
-int gic_v2_init(void)
+void *gic_v2_init(void)
 {
   void *gicbase = get_gic_baseaddr();
   gicd_base = gicbase + GICD_OFFSET;
@@ -117,7 +117,7 @@ int gic_v2_init(void)
   printf("gicc_base=%x gicd_base=%x\n\r", (unsigned)gicc_base, (unsigned)gicd_base);
 	mmio_write32(gicc_base + GICC_CTLR, GICC_CTLR_GRPEN1);
 	mmio_write32(gicc_base + GICC_PMR, GICC_PMR_DEFAULT);
-	return 0;
+	return gicbase;
 }
 
 void *gic_v2_gicd_get_address(void)

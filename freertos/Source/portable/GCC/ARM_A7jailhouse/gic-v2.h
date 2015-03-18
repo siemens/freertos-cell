@@ -87,7 +87,7 @@
 #define GICC_CTLR_GRPEN1	(1 << 0)
 #define GICC_PMR_DEFAULT	0xf0
 
-int gic_v2_init(void);
+void *gic_v2_init(void);
 void *gic_v2_gicd_get_address(void);
 void *gic_v2_gicc_get_address(void);
 void gic_v2_irq_enable(unsigned int irqn);

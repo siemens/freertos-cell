@@ -551,8 +551,7 @@ static void prvSetupHardware(void)
   show_cache_mmu_status("MMU/Cache status at entry");
   printf("Initializing the HW...\n\r");
   if(USE_CACHE_MMU) hardware_cpu_caches_off();
-  gic_v2_init();
-  io_dev_map[1] = (unsigned long)gic_v2_gicd_get_address();
+  io_dev_map[1] = (unsigned long)gic_v2_init();
   if(USE_CACHE_MMU) hardware_mmu_ptable_setup(io_dev_map, ARRAY_SIZE(io_dev_map));
   if(USE_CACHE_MMU) hardware_cpu_cache_mmu_enable();
   /* Replace the exception vector table by a FreeRTOS variant */
