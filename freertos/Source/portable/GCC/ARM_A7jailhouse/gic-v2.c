@@ -73,6 +73,7 @@
 
 /* {{{1 Includes */
 #include <stdint.h>
+#include <stdio.h>
 
 #include "gic-v2.h"
 /* }}} */
@@ -113,7 +114,7 @@ int gic_v2_init(void)
   void *gicbase = get_gic_baseaddr();
   gicd_base = gicbase + GICD_OFFSET;
   gicc_base = gicbase + GICC_OFFSET;
-  //printk("gicc_base=%x gicd_base=%x\n\r", (unsigned)gicc_base, (unsigned)gicd_base);
+  printf("gicc_base=%x gicd_base=%x\n\r", (unsigned)gicc_base, (unsigned)gicd_base);
 	mmio_write32(gicc_base + GICC_CTLR, GICC_CTLR_GRPEN1);
 	mmio_write32(gicc_base + GICC_PMR, GICC_PMR_DEFAULT);
 	return 0;
@@ -152,11 +153,11 @@ void gic_v2_irq_set_prio(int irqno, int prio)
   n = m / 4;
   offset = GICD_IPRIORITYR + 4*n;
   offset += m % 4; /* Byte offset */
-  //printk("IRQ%d prio original: 0x%x\n\r", irqno, (unsigned)gicd[offset]);
+  printf("IRQ%d prio original: 0x%x\n\r", irqno, (unsigned)gicd[offset]);
   gicd[offset] = 0xff;
-  //printk("IRQ%d prio readback after 0xff: 0x%x\n\r", irqno, (unsigned)gicd[offset]);
+  printf("IRQ%d prio readback after 0xff: 0x%x\n\r", irqno, (unsigned)gicd[offset]);
   gicd[offset] = prio << 4;
-  //printk("IRQ%d prio modified: 0x%x\n\r", irqno, (unsigned)gicd[offset]);
+  printf("IRQ%d prio modified: 0x%x\n\r", irqno, (unsigned)gicd[offset]);
 }
 
 void gic_v2_irq_activate_exclusive_on_cpu(int irqno, int prio)
@@ -164,13 +165,13 @@ void gic_v2_irq_activate_exclusive_on_cpu(int irqno, int prio)
   volatile uint8_t *gicd = gic_v2_gicd_get_address() + GICD_ITARGETSR;
   int n, m, offset;
   m = irqno;
-  //printk("gicd=%x CPUID=%d\n\r", (unsigned)gicd, (int)gicd[0]);
+  printf("gicd=%x CPUID=%d\n\r", (unsigned)gicd, (int)gicd[0]);
   n = m / 4;
   offset = 4*n;
   offset += m % 4;
-  //printk("\tOrig GICD_ITARGETSR[%d]=%d\n\r",m, (int)gicd[offset]);
+  printf("\tOrig GICD_ITARGETSR[%d]=%d\n\r",m, (int)gicd[offset]);
   gicd[offset] = gicd[0]; /* Exclusively route interrupt to the CPU running this code */
-  //printk("\tNew  GICD_ITARGETSR[%d]=%d\n\r",m, (int)gicd[offset]);
+  printf("\tNew  GICD_ITARGETSR[%d]=%d\n\r",m, (int)gicd[offset]);
   gic_v2_irq_set_prio(irqno, prio);
   gic_v2_irq_enable(irqno);
 }
