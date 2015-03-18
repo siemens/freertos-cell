@@ -208,6 +208,10 @@ static int print( char **out, const char *format, va_list args )
 		out:
 			printchar (out, *format);
 			++pc;
+                        if('\n' == *format) {
+                          printchar(out, '\r');
+                          ++pc;
+                        }
 		}
 	}
 	if (out) **out = '\0';

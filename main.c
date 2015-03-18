@@ -129,7 +129,7 @@ void vAssertCalled( const char * pcFile, unsigned long ulLine )
   {
     /* Set ul to a non-zero value using the debugger to step out of this
        function. */
-    printf("%s %s: line=%lu\n\r", __func__, pcFile, ulLine);
+    printf("%s %s: line=%lu\n", __func__, pcFile, ulLine);
     while( ul == 0 ) {
       portNOP();
     }
@@ -145,7 +145,7 @@ void vApplicationMallocFailedHook( void )
      timers, and semaphores.  The size of the FreeRTOS heap is set by the
      configTOTAL_HEAP_SIZE configuration constant in FreeRTOSConfig.h. */
   taskDISABLE_INTERRUPTS();
-  printf("%s\n\r", __func__);
+  printf("%s\n", __func__);
   while(1) {
     portNOP();
   }
@@ -161,14 +161,14 @@ void vApplicationStackOverflowHook( TaskHandle_t pxTask, char *pcTaskName )
      function is called if a stack overflow is detected. */
   vTaskSuspendAll();
   taskDISABLE_INTERRUPTS();
-    printf("%s task=%s\n\r", __func__, pcTaskName);
+    printf("%s task=%s\n", __func__, pcTaskName);
   for( ;; )
     ARM_SLEEP;
 }
 
 void __div0(void)
 {
-  printf("PANIC: Div by zero error\n\r");
+  printf("PANIC: Div by zero error\n");
   ARM_SLEEP;
 }
 
@@ -250,7 +250,7 @@ static int timer_init(unsigned beats_per_second)
 static void serial_print(char *buf, int n)
 {
   buf[n] = 0;
-  UART_OUTPUT("TUA\t%d %s\n\r", n, buf);
+  UART_OUTPUT("TUA\t%d %s\n", n, buf);
 }
 
 static __attribute__((unused)) void hyp_putchar(int c)
@@ -326,7 +326,7 @@ void vApplicationIRQHandler(unsigned int irqn)
       /* This irq should be ignored. It is no longer relevant */
       break;
     default:
-      printf("Spurious irq %d\n\r", irqn);
+      printf("Spurious irq %d\n", irqn);
       break;
   }
 }
@@ -343,7 +343,7 @@ static void testTask( void *pvParameters )
   unsigned cnt = 0;
   TickType_t pxPreviousWakeTime = xTaskGetTickCount();
   while(pdTRUE) {
-    sprintf(buf, "T%02u\tperiod:%5u;\tloop:%5u;\ttick:%6u\n\r", id, (unsigned)period, cnt++, (unsigned)xTaskGetTickCount());
+    sprintf(buf, "T%02u\tperiod:%5u;\tloop:%5u;\ttick:%6u\n", id, (unsigned)period, cnt++, (unsigned)xTaskGetTickCount());
     UART_OUTPUT(buf);
 #if 0
     if(0x7 == (0x7 & cnt)) /* Force a task switch */
@@ -369,7 +369,7 @@ static void sendTask(void *pvParameters)
   TaskHandle_t recvtask = pvParameters;
   TickType_t pxPreviousWakeTime = xTaskGetTickCount();
   while(1) {
-    UART_OUTPUT("Sending ...\n\r");
+    UART_OUTPUT("Sending ...\n");
     xTaskNotify(recvtask, 0, eIncrement);
     vTaskDelayUntil(&pxPreviousWakeTime, pdMS_TO_TICKS(1000));
   }
@@ -380,10 +380,10 @@ static void recvTask(void *pvParameters)
   while(1) {
     uint32_t value;
     if(pdTRUE == xTaskNotifyWait(0, 0, &value, portMAX_DELAY)) {
-      UART_OUTPUT("Value received: %u\n\r", (unsigned)value);
+      UART_OUTPUT("Value received: %u\n", (unsigned)value);
     }
     else {
-      printf("No value received\n\r");
+      printf("No value received\n");
     }
   }
 }
@@ -398,7 +398,7 @@ static void floatTask( void *pvParameters )
   c = 1.;
   while(pdTRUE) {
     d = 1e6 * (c - (unsigned)c);
-    UART_OUTPUT("FT%d: 1.11^%d=%4d.%06d\n\r", id, cnt++, (unsigned)c, (unsigned)d);
+    UART_OUTPUT("FT%d: 1.11^%d=%4d.%06d\n", id, cnt++, (unsigned)c, (unsigned)d);
     vTaskDelayUntil(&pxPreviousWakeTime, pdMS_TO_TICKS(1000));
     if(cnt < 133)
       c *= 1.11;
@@ -454,11 +454,11 @@ static void show_cache_mmu_status(const char *header)
   unsigned scr;
 
   asm volatile("dsb;isb;mrc p15, 0, %0, c1, c0, 0;" : "=r" (scr) : /* Inputs */ : /* clobber */);
-  printf("===== %s =====\n\r", header);
-  printf("\tIcache %u\n\r", !!(scr & (1<<12)));
-  printf("\tFlow   %u\n\r", !!(scr & (1<<11)));
-  printf("\tDcache %u\n\r", !!(scr & (1<<2)));
-  printf("\tMMU    %u\n\r", !!(scr & (1<<0)));
+  printf("===== %s =====\n", header);
+  printf("\tIcache %u\n", !!(scr & (1<<12)));
+  printf("\tFlow   %u\n", !!(scr & (1<<11)));
+  printf("\tDcache %u\n", !!(scr & (1<<2)));
+  printf("\tMMU    %u\n", !!(scr & (1<<0)));
 }
 
 static void hardware_cpu_caches_off(void)
@@ -497,7 +497,7 @@ static void hardware_mmu_ptable_setup(unsigned long iomem[], int n)
    * To map the whole 4GB DDR3 address space we need 4096 entries in the page table
    */
   static uint32_t mmu_pgtable[4096] __attribute__((aligned(16<<10)));
-  printf("MMU page table: %p\n\r", mmu_pgtable);
+  printf("MMU page table: %p\n", mmu_pgtable);
   /* Create a MMU identity map for the whole 4GB address space */
   for(i = 0; i < ARRAY_SIZE(mmu_pgtable); i++) {
     mmu_pgtable[i] = i<<20; /* Section base address: one section is 1MB */
@@ -513,7 +513,7 @@ static void hardware_mmu_ptable_setup(unsigned long iomem[], int n)
   /* Do not cache peripheral IO memory sections */
   for(i = 0; i < n; i++) {
     int idx = iomem[i] >> 20;
-    printf("%s: [%d]=0x%x\n\r", __func__, i, idx << 20);
+    printf("%s: [%d]=0x%x\n", __func__, i, idx << 20);
     /* Non-shareable Device: TEX = 0b010 CB = 0b00 */
     mmu_pgtable[idx] &= ~(3<<2); /* Clear C/B bits */
     mmu_pgtable[idx] &= ~(7<<10); /* Clear TEX */
@@ -542,13 +542,13 @@ static void uart_irq_enable(void)
   volatile uint8_t *gicd = gic_v2_gicd_get_address() + GICD_ITARGETSR;
   int n, m, offset;
   m = UART7_IRQ;
-  printf("UART gicd=%p CPUID=%d\n\r", gicd, (int)gicd[0]);
+  printf("UART gicd=%p CPUID=%d\n", gicd, (int)gicd[0]);
   n = m / 4;
   offset = 4*n;
   offset += m % 4;
-  printf("\tOrig GICD_ITARGETSR[%d]=%d\n\r",m, (int)gicd[offset]);
+  printf("\tOrig GICD_ITARGETSR[%d]=%d\n",m, (int)gicd[offset]);
   gicd[offset] |= gicd[0];
-  printf("\tNew  GICD_ITARGETSR[%d]=%d\n\r",m, (int)gicd[offset]);
+  printf("\tNew  GICD_ITARGETSR[%d]=%d\n",m, (int)gicd[offset]);
   gic_v2_irq_set_prio(UART7_IRQ, portLOWEST_USABLE_INTERRUPT_PRIORITY);
   gic_v2_irq_enable(UART7_IRQ);
   //ARM_SLEEP;
@@ -564,7 +564,7 @@ static void prvSetupHardware(void)
   ser_dev = serial_open();
   io_dev_map[0] = (unsigned long)ser_dev;
   show_cache_mmu_status("MMU/Cache status at entry");
-  printf("Initializing the HW...\n\r");
+  printf("Initializing the HW...\n");
   if(USE_CACHE_MMU) hardware_cpu_caches_off();
   io_dev_map[1] = (unsigned long)gic_v2_init();
   if(USE_CACHE_MMU) hardware_mmu_ptable_setup(io_dev_map, ARRAY_SIZE(io_dev_map));
@@ -576,12 +576,12 @@ static void prvSetupHardware(void)
   serial_irq_rx_enable(ser_dev);
   arm_read_sysreg(CNTFRQ, timer_frq);
   if(!timer_frq) {
-    printf("Timer frequency is zero\n\r");
+    printf("Timer frequency is zero\n");
     ARM_SLEEP;
   }
   asm volatile ( "mrs %0, apsr" : "=r" ( apsr ) );
   apsr &= 0x1f;
-  printf("FreeRTOS inmate cpu-mode=%x\n\r", apsr);
+  printf("FreeRTOS inmate cpu-mode=%x\n", apsr);
   show_cache_mmu_status("MMU/Cache status at runtime");
 }
 /* }}} */
@@ -603,7 +603,7 @@ void inmate_main(void)
 
   if(1) for(i = 0; i < 20; i++) {
     int prio = 1 + i % (configMAX_PRIORITIES-1);
-    printf("Create task %u with prio %d\n\r", i, prio);
+    printf("Create task %u with prio %d\n", i, prio);
     xTaskCreate( testTask, /* The function that implements the task. */
         "test", /* The text name assigned to the task - for debug only; not used by the kernel. */
         configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
@@ -641,9 +641,9 @@ void inmate_main(void)
         tskIDLE_PRIORITY+1, /* The priority assigned to the task. */
         NULL );								    /* The task handle is not required, so NULL is passed. */
   }
-  printf("vTaskStartScheduler goes active\n\r");
+  printf("vTaskStartScheduler goes active\n");
   vTaskStartScheduler();
-  printf("vTaskStartScheduler terminated: strange!!!\n\r");
+  printf("vTaskStartScheduler terminated: strange!!!\n");
 	while (1) {
     ARM_SLEEP;
   }
