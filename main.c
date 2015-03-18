@@ -112,6 +112,7 @@ int printf(const char *format, ...);
 /* {{{1 Global variables */
 static TaskHandle_t uart_task_handle;
 static SemaphoreHandle_t uart_sema;
+sio_fd_t ser_dev;
 /* }}} */
 
 /* {{{1 FreeRTOS debug hooks */
@@ -252,6 +253,18 @@ static void serial_print(char *buf, int n)
   UART_OUTPUT("TUA\t%d %s\n\r", n, buf);
 }
 
+static __attribute__((unused)) void hyp_putchar(int c)
+{
+  asm volatile(
+      "mov r0, #8;"
+      "mov r1, %0;"
+      "hvc #0;"
+      : /* outputs */
+      : "r" (c) /* inputs */
+      : "r0", "r1" /* clobbered */
+      );
+}
+
 static void uartTask(void *pvParameters)
 {
   uint32_t c;
@@ -260,6 +273,7 @@ static void uartTask(void *pvParameters)
   while(pdTRUE) {
     if(pdTRUE == xTaskNotifyWait(0, 0, &c, pdMS_TO_TICKS(250))) {
       led_toggle();
+      //hyp_putchar(c);
       s[idx] = c;
       if('\r' == s[idx] || idx >= sizeof(s)-1) {
         serial_print(s, idx);
@@ -292,7 +306,7 @@ void vConfigureTickInterrupt( void )
 
 static void handle_uart_irq(void)
 {
-  uint32_t v = serial_irq_getchar();
+  uint32_t v = serial_irq_getchar(ser_dev);
   BaseType_t do_yield = pdFALSE;
   xTaskNotifyFromISR(uart_task_handle, v, eSetValueWithOverwrite, &do_yield);
   portYIELD_FROM_ISR(do_yield);
@@ -547,7 +561,8 @@ static void prvSetupHardware(void)
   unsigned apsr;
   static unsigned long io_dev_map[2];
 
-  io_dev_map[0] = (unsigned long)serial_init();
+  ser_dev = serial_open();
+  io_dev_map[0] = (unsigned long)ser_dev;
   show_cache_mmu_status("MMU/Cache status at entry");
   printf("Initializing the HW...\n\r");
   if(USE_CACHE_MMU) hardware_cpu_caches_off();
@@ -558,7 +573,7 @@ static void prvSetupHardware(void)
   vPortInstallFreeRTOSVectorTable();
   hardware_fpu_enable();
   uart_irq_enable();
-  serial_irq_rx_enable();
+  serial_irq_rx_enable(ser_dev);
   arm_read_sysreg(CNTFRQ, timer_frq);
   if(!timer_frq) {
     printf("Timer frequency is zero\n\r");

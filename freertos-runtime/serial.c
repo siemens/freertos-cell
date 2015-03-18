@@ -49,10 +49,10 @@ static void mmio_write32(void *addr, uint32_t val)
   *((volatile uint32_t*)addr) = val;
 }
 
-void *serial_init(void)
+sio_fd_t serial_open(void)
 {
 	unsigned divisor = DIV_ROUND_CLOSEST(UART_CLK, 16 * UART_BAUDRATE);
-  void *uart_base = (void*)UART7_BASE;
+  sio_fd_t uart_base = (void*)UART7_BASE;
 
   mmio_write32(UART_CLOCK_REG,
       mmio_read32(UART_CLOCK_REG) |
@@ -71,33 +71,33 @@ void *serial_init(void)
   return uart_base;
 }
 
-void serial_irq_rx_enable(void)
+void serial_irq_rx_enable(sio_fd_t fd)
 {
-  void *uart_ier = (void*)UART7_BASE + UART_IER;
+  void *uart_ier = fd + UART_IER;
   mmio_write32(uart_ier, 5 | mmio_read32(uart_ier)); /* ERBFI + ELSI */
 }
 
-static int serial_ready(void)
+static int serial_ready(sio_fd_t fd)
 {
-  uint32_t *uart_lsr = (void*)(UART7_BASE + UART_LSR);
+  uint32_t *uart_lsr = fd + UART_LSR;
   return UART_LSR_THRE & mmio_read32(uart_lsr); /* Transmit hold register empty */
 }
 
-void serial_putchar(uint32_t c)
+void serial_putchar(sio_fd_t fd, uint32_t c)
 {
-  uint32_t *uart_tx = (void*)(UART7_BASE + UART_TX);
-  while(!serial_ready())
+  uint32_t *uart_tx = fd + UART_TX;
+  while(!serial_ready(fd))
     ; /* Wait for empty transmit */
   mmio_write32(uart_tx, c);
 }
 
-int serial_irq_getchar(void)
+int serial_irq_getchar(sio_fd_t fd)
 {
   int r = 0;
-  volatile uint32_t *uart_rbr = (void*)(UART7_BASE + 0x0); /* Receive buffer register */
-  volatile uint32_t *uart_iir = (void*)(UART7_BASE + 0x8); /* INTERRUPT IDENTITY REGISTER */
-  volatile uint32_t *uart_lsr = (void*)(UART7_BASE + 0x14);/* Line status register */
-  volatile uint32_t *uart_usr = (void*)(UART7_BASE + 0x7C);/* UART status register */
+  volatile uint32_t *uart_rbr = fd + 0x0; /* Receive buffer register */
+  volatile uint32_t *uart_iir = fd + 0x8; /* INTERRUPT IDENTITY REGISTER */
+  volatile uint32_t *uart_lsr = fd + 0x14;/* Line status register */
+  volatile uint32_t *uart_usr = fd + 0x7C;/* UART status register */
   unsigned iir_val;
   iir_val = 0xf & *uart_iir;
   switch(iir_val) {

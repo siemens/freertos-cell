@@ -31,7 +31,9 @@
 #include "serial.h"
 #include "printf-stdarg.h"
 
-#define putchar(c) serial_putchar(c)
+extern sio_fd_t ser_dev;
+
+#define putchar(c) serial_putchar(ser_dev, c)
 
 static void printchar(char **str, int c)
 {
