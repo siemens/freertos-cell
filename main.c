@@ -584,6 +584,7 @@ static void linkStatusCB(void *ctx, int errCode, void *arg)
     UART_OUTPUT("dns2    = %s\n", inet_ntoa(addrs->dns2));
   } else {
     /* We have lost connection */
+    *connected = 0;
   }
 }
 
@@ -592,19 +593,23 @@ static void pppTask(void *pvParameters)
   int connected = 0;
   while(1) {
     int pd = pppOverSerialOpen(ser_dev, linkStatusCB, &connected);
-    printf("&connected=%p\n", &connected);
     if(pd >= 0) {
       // the thread was successfully started.
       while (!connected) {
-        vTaskDelay(pdMS_TO_TICKS(333));
-        UART_OUTPUT("PPP: still not connected ...\n\r");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        UART_OUTPUT("PPP: pd=%d still not connected ...\n\r", pd);
       }
       /* Now we are connected */
-      while(1) {
-        vTaskDelay(pdMS_TO_TICKS(200));
-        UART_OUTPUT("PPP: working ...\n");
+      while(connected) {
+        vTaskDelay(pdMS_TO_TICKS(500));
+        UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
       }
       pppClose(pd);
+    }
+    else {
+      UART_OUTPUT("PPP over serial failed: err=%d\n\r", pd);
+      vTaskDelay(pdMS_TO_TICKS(500));
+      connected = 0;
     }
   }
 }
@@ -655,7 +660,7 @@ void inmate_main(void)
         NULL );								    /* The task handle is not required, so NULL is passed. */
   }
 
-  if(1) { /* Task notification test */
+  if(0) { /* Task notification test */
     TaskHandle_t recv_task_handle;
     xTaskCreate( recvTask, /* The function that implements the task. */
         "receive", /* The text name assigned to the task - for debug only; not used by the kernel. */
@@ -676,7 +681,7 @@ void inmate_main(void)
       NULL, 								/* The parameter passed to the task */
       tskIDLE_PRIORITY, /* The priority assigned to the task. */
       NULL );								    /* The task handle is not required, so NULL is passed. */
-  if(1) for(i = 0; i < 2; i++) {
+  if(0) for(i = 0; i < 2; i++) {
     xTaskCreate( floatTask, /* The function that implements the task. */
         "float", /* The text name assigned to the task - for debug only; not used by the kernel. */
         configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */

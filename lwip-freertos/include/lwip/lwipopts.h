@@ -33,6 +33,8 @@
 #define __LWIPOPTS_H__
 #include "FreeRTOS.h"
 
+#define sys_msleep(ms) vTaskDelay(pdMS_TO_TICKS(ms))
+
 #define PPP_SUPPORT 1
 /* Enable PPP over serial */
 #define PPPOS_SUPPORT PPP_SUPPORT
