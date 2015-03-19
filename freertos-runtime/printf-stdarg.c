@@ -33,7 +33,19 @@
 
 extern sio_fd_t ser_dev;
 
-#define putchar(c) serial_putchar(ser_dev, c)
+static __attribute__((unused)) void hyp_putchar(int c)
+{
+  asm volatile(
+      "mov r0, #8;"
+      "mov r1, %0;"
+      "hvc #0;"
+      : /* outputs */
+      : "r" (c) /* inputs */
+      : "r0", "r1" /* clobbered */
+      );
+}
+
+#define putchar(c) hyp_putchar(c)
 
 static void printchar(char **str, int c)
 {
