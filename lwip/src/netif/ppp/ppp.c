@@ -1529,6 +1529,8 @@ pppInputThread(void *arg)
       sys_msleep(1);
     }
   }
+  printf("%s num_tasks: %lu\n", __func__, uxTaskGetNumberOfTasks());
+  vTaskDelete( NULL );
 }
 #endif /* PPPOS_SUPPORT && PPP_INPROC_OWNTHREAD */
 
