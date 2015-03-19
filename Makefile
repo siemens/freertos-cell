@@ -34,26 +34,84 @@ FREERTOS_RUNTIME_OBJS = freertos-runtime/string.o \
 	freertos-runtime/printf-stdarg.o \
 	freertos-runtime/lib1funcs.o
 
-RUNTIME_OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS)
+#
+# LWIP tcpip stack
+#
+LWIP_DIR = $(src)/lwip/src
+CFLAGS += -I$(LWIP_DIR)/include -DUSE_LWIP_STACK
+# Core code
+LWIP_C_SRCS += \
+	$(LWIP_DIR)/core/timers.c \
+	$(LWIP_DIR)/core/def.c \
+	$(LWIP_DIR)/core/dhcp.c \
+	$(LWIP_DIR)/core/dns.c \
+	$(LWIP_DIR)/core/init.c \
+	$(LWIP_DIR)/core/mem.c \
+	$(LWIP_DIR)/core/memp.c \
+	$(LWIP_DIR)/core/netif.c \
+	$(LWIP_DIR)/core/pbuf.c \
+	$(LWIP_DIR)/core/raw.c \
+	$(LWIP_DIR)/core/stats.c \
+	$(LWIP_DIR)/core/sys.c \
+	$(LWIP_DIR)/core/tcp.c \
+	$(LWIP_DIR)/core/tcp_in.c \
+	$(LWIP_DIR)/core/tcp_out.c \
+	$(LWIP_DIR)/core/udp.c
+# IPv4 code
+CFLAGS += -I$(LWIP_DIR)/include/ipv4
+LWIP_C_SRCS += \
+	$(LWIP_DIR)/core/ipv4/autoip.c \
+	$(LWIP_DIR)/core/ipv4/icmp.c \
+	$(LWIP_DIR)/core/ipv4/igmp.c \
+	$(LWIP_DIR)/core/ipv4/inet.c \
+	$(LWIP_DIR)/core/ipv4/inet_chksum.c \
+	$(LWIP_DIR)/core/ipv4/ip_addr.c \
+	$(LWIP_DIR)/core/ipv4/ip.c \
+	$(LWIP_DIR)/core/ipv4/ip_frag.c \
+	$(LWIP_DIR)/netif/etharp.c
+# API code
+LWIP_C_SRCS += \
+	$(LWIP_DIR)/api/api_lib.c \
+	$(LWIP_DIR)/api/api_msg.c \
+	$(LWIP_DIR)/api/err.c \
+	$(LWIP_DIR)/api/netbuf.c \
+	$(LWIP_DIR)/api/netdb.c \
+	$(LWIP_DIR)/api/netifapi.c \
+	$(LWIP_DIR)/api/sockets.c \
+	$(LWIP_DIR)/api/tcpip.c
+# Platform code 
+LWIP_PLATFORM_DIR = $(src)/lwip-freertos
+CFLAGS += -I$(LWIP_PLATFORM_DIR)/include -I$(LWIP_PLATFORM_DIR)/include/lwip
+CFLAGS += -I$(LWIP_PLATFORM_DIR)/emac -I$(LWIP_PLATFORM_DIR)/common
+LWIP_C_SRCS += \
+	$(LWIP_PLATFORM_DIR)/api/sys_arch.c
+		
+LWIP_OBJS = $(LWIP_C_SRCS:.c=.o)
+
+ALL_FREERTOS_OBJS = $(FREERTOS_RUNTIME_OBJS) $(FREERTOS_OBJS)
 OBJS = main.o boot_stub.o
 
-RUNTIME_AR = libfreertos.a
+FREERTOS_AR = libfreertos.a
+LWIP_AR = liblwip.a
 
 all: $(EXE_STEM).bin
 
-DEPS := $(OBJS:.o=.d) $(RUNTIME_OBJS:.o=.d)
+DEPS := $(OBJS:.o=.d) $(ALL_FREERTOS_OBJS:.o=.d)
 
-$(EXE_STEM).elf: $(OBJS) $(RUNTIME_AR)
+$(EXE_STEM).elf: $(OBJS) $(LWIP_AR) $(FREERTOS_AR)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-$(RUNTIME_AR): $(RUNTIME_OBJS)
+$(LWIP_AR): $(LWIP_OBJS)
+	$(AR) -srcv $@ $^
+
+$(FREERTOS_AR): $(ALL_FREERTOS_OBJS)
 	$(AR) -srcv $@ $^
 
 %.bin: %.elf
 	$(OBJCOPY) -O binary $< $@
 
 clean:
-	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin $(RUNTIME_OBJS) $(RUNTIME_AR)
+	rm -f $(OBJS) $(EXE_STEM).elf $(EXE_STEM).bin $(ALL_FREERTOS_OBJS) $(FREERTOS_AR) $(LWIP_OBJS) $(LWIP_AR)
 
 distclean: clean
 	rm -f $(DEPS)
