@@ -1,5 +1,5 @@
 #include "FreeRTOS.h"
-#include "task.h"
+#include "queue.h"
 #include "sio_ppp.h"
 #include "serial.h"
 
@@ -14,16 +14,34 @@ void sio_timeout_set(sio_fd_t fd, unsigned millisec)
   delay = pdMS_TO_TICKS(millisec);
 }
 
+static void green_led_toggle(void)
+{
+#ifdef CONFIG_MACH_SUN7I
+#define PIO_BASE ((void*)0x01c20800)
+  uint32_t *led_reg = PIO_BASE + 7*0x24 + 0x10;
+  *led_reg ^= 1<<24;
+#endif
+}
+
+static QueueHandle_t ser_rx_queue;
+
+void sio_queue_register(QueueHandle_t qh)
+{
+  ser_rx_queue = qh;
+}
+
 u32_t sio_read(sio_fd_t fd, u8_t *data, u32_t len)
 {
-  u32_t c, cnt = 0;
-  while(cnt < len && pdTRUE == xTaskNotifyWait(0, 0, &c, delay)) {
-    *data++ = (u8_t)c;
+  u32_t cnt = 0;
+  u8_t c;
+  while(cnt < len && pdTRUE == xQueueReceive(ser_rx_queue, &c, delay)) {
+    *data++ = c;
     ++cnt;
     if(do_a_read_abort) {
       do_a_read_abort = 0;
       return 0;
     }
+    green_led_toggle();
   }
   return cnt;
 }
