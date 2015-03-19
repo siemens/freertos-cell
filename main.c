@@ -255,14 +255,13 @@ static int timer_init(unsigned beats_per_second)
 
 static void uartTask(void *pvParameters)
 {
-  uint8_t s[80];
-  sio_timeout_set(ser_dev, 38);
+  static uint8_t s[PPP_MRU];
+  sio_timeout_set(ser_dev, 40);
   while(pdTRUE) {
     int n = sio_read(ser_dev, s, sizeof(s)-1);
     if(n > 0) {
       s[n] = '\0';
       sio_write(ser_dev, s, n);
-      led_toggle();
       UART_OUTPUT("TUA: n=%d\n", n);
     }
   }
@@ -282,12 +281,13 @@ void vConfigureTickInterrupt( void )
   timer_init(BEATS_PER_SEC);
 }
 
+QueueHandle_t ser_rx_queue;
 
 static void handle_uart_irq(void)
 {
-  uint32_t v = serial_irq_getchar(ser_dev);
+  uint8_t v = (uint8_t)serial_irq_getchar(ser_dev);
   BaseType_t do_yield = pdFALSE;
-  xTaskNotifyFromISR(uart_task_handle, v, eSetValueWithOverwrite, &do_yield);
+  xQueueSendToBackFromISR(ser_rx_queue, &v, &do_yield);
   portYIELD_FROM_ISR(do_yield);
 }
 
@@ -573,8 +573,23 @@ void inmate_main(void)
 
   prvSetupHardware();
   uart_mutex = xSemaphoreCreateMutex();
+  ser_rx_queue = xQueueCreate(8*PPP_MRU, sizeof(uint8_t));
+  sio_queue_register(ser_rx_queue);
+  /* initialise lwIP. This creates a new thread, tcpip_thread, that
+   * communicates with the pppInputThread (see below) */
   tcpip_init(NULL, NULL);
+  /* initialise PPP. This needs to be done only once after boot up, to
+   * initialize global variables, etc. */
   pppInit();
+  /* set the method of authentication. Use PPPAUTHTYPE_PAP, or
+   * PPPAUTHTYPE_CHAP for more security .
+   * If this is not called, the default is PPPAUTHTYPE_NONE. 
+   */
+  {
+    const char *username = "rtosuser";
+    const char *password = "rtospass";
+    pppSetAuth(PPPAUTHTYPE_ANY, username, password);
+  }
 
   xTaskCreate( uartTask, /* The function that implements the task. */
       "uartstat", /* The text name assigned to the task - for debug only; not used by the kernel. */
