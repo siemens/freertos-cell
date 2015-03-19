@@ -86,6 +86,7 @@
 
 /* lwIP includes */
 #include "lwip/tcpip.h"
+#include "ppp/ppp.h"
 /* }}} */
 
 /* {{{1 Defines */
@@ -585,6 +586,7 @@ void inmate_main(void)
   prvSetupHardware();
   uart_mutex = xSemaphoreCreateMutex();
   tcpip_init(NULL, NULL);
+  pppInit();
 
   xTaskCreate( uartTask, /* The function that implements the task. */
       "uartstat", /* The text name assigned to the task - for debug only; not used by the kernel. */
