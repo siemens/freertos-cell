@@ -80,19 +80,19 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/tcpip.c
 # PPP
 LWIP_C_SRCS += \
-	lwip/src/netif/ppp/auth.c \
-	lwip/src/netif/ppp/chap.c \
-	lwip/src/netif/ppp/chpms.c \
-	lwip/src/netif/ppp/fsm.c \
-	lwip/src/netif/ppp/ipcp.c \
-	lwip/src/netif/ppp/lcp.c \
-	lwip/src/netif/ppp/magic.c \
-	lwip/src/netif/ppp/md5.c \
-	lwip/src/netif/ppp/pap.c \
-	lwip/src/netif/ppp/ppp.c \
-	lwip/src/netif/ppp/ppp_oe.c \
-	lwip/src/netif/ppp/randm.c \
-	lwip/src/netif/ppp/vj.c
+	$(LWIP_DIR)/netif/ppp/auth.c \
+	$(LWIP_DIR)/netif/ppp/chap.c \
+	$(LWIP_DIR)/netif/ppp/chpms.c \
+	$(LWIP_DIR)/netif/ppp/fsm.c \
+	$(LWIP_DIR)/netif/ppp/ipcp.c \
+	$(LWIP_DIR)/netif/ppp/lcp.c \
+	$(LWIP_DIR)/netif/ppp/magic.c \
+	$(LWIP_DIR)/netif/ppp/md5.c \
+	$(LWIP_DIR)/netif/ppp/pap.c \
+	$(LWIP_DIR)/netif/ppp/ppp.c \
+	$(LWIP_DIR)/netif/ppp/ppp_oe.c \
+	$(LWIP_DIR)/netif/ppp/randm.c \
+	$(LWIP_DIR)/netif/ppp/vj.c
 # PPP support
 LWIP_C_SRCS += \
 	rand.c \
