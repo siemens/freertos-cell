@@ -88,6 +88,7 @@
 /* lwIP includes */
 #include "lwip/tcpip.h"
 #include "ppp/ppp.h"
+#include "lwip/inet.h"
 /* }}} */
 
 /* {{{1 Defines */
@@ -102,6 +103,7 @@
 #define UART_UNLOCK xSemaphoreGive(uart_mutex)
 #define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); UART_UNLOCK;} } while(0)
 
+#define PPP_TEST_MODE 1
 /* }}} */
 
 /* {{{1 Prototypes */
@@ -115,7 +117,6 @@ int printf(const char *format, ...);
 /* }}} */
 
 /* {{{1 Global variables */
-static TaskHandle_t uart_task_handle;
 static SemaphoreHandle_t uart_mutex;
 sio_fd_t ser_dev;
 /* }}} */
@@ -565,15 +566,60 @@ static void prvSetupHardware(void)
 }
 /* }}} */
 
-/* {{{1 main */
+/* {{{1 PPP */
 
+static void linkStatusCB(void *ctx, int errCode, void *arg)
+{
+  int *connected = (int *) ctx;
+  struct ppp_addrs *addrs = arg;
+
+  printf("ctx = %p, errCode = %d arg = %p conn=%d\n", ctx, errCode, arg, *connected);
+
+  if (errCode == PPPERR_NONE) {
+    /* We are connected */
+    *connected = 1;
+    UART_OUTPUT("ip_addr = %s\n", inet_ntoa(addrs->our_ipaddr));
+    UART_OUTPUT("netmask = %s\n", inet_ntoa(addrs->netmask));
+    UART_OUTPUT("dns1    = %s\n", inet_ntoa(addrs->dns1));
+    UART_OUTPUT("dns2    = %s\n", inet_ntoa(addrs->dns2));
+  } else {
+    /* We have lost connection */
+  }
+}
+
+static void pppTask(void *pvParameters)
+{
+  int connected = 0;
+  while(1) {
+    int pd = pppOverSerialOpen(ser_dev, linkStatusCB, &connected);
+    printf("&connected=%p\n", &connected);
+    if(pd >= 0) {
+      // the thread was successfully started.
+      while (!connected) {
+        vTaskDelay(pdMS_TO_TICKS(333));
+        UART_OUTPUT("PPP: still not connected ...\n\r");
+      }
+      /* Now we are connected */
+      while(1) {
+        vTaskDelay(pdMS_TO_TICKS(200));
+        UART_OUTPUT("PPP: working ...\n");
+      }
+      pppClose(pd);
+    }
+  }
+}
+/* }}} */
+
+/* {{{1 main */
 void inmate_main(void)
 {
   unsigned i;
 
   prvSetupHardware();
   uart_mutex = xSemaphoreCreateMutex();
+  configASSERT(NULL != uart_mutex);
   ser_rx_queue = xQueueCreate(8*PPP_MRU, sizeof(uint8_t));
+  configASSERT(NULL != ser_rx_queue);
   sio_queue_register(ser_rx_queue);
   /* initialise lwIP. This creates a new thread, tcpip_thread, that
    * communicates with the pppInputThread (see below) */
@@ -591,14 +637,14 @@ void inmate_main(void)
     pppSetAuth(PPPAUTHTYPE_ANY, username, password);
   }
 
-  xTaskCreate( uartTask, /* The function that implements the task. */
-      "uartstat", /* The text name assigned to the task - for debug only; not used by the kernel. */
+  xTaskCreate( PPP_TEST_MODE ? pppTask : uartTask, /* The function that implements the task. */
+      "ppptask", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL,                                                            /* The parameter passed to the task */
-      configMAX_PRIORITIES-1, /* The priority assigned to the task. */
-      &uart_task_handle );
+      configMAX_PRIORITIES/2, /* The priority assigned to the task. */
+      NULL );
 
-  if(1) for(i = 0; i < 20; i++) {
+  if(0) for(i = 0; i < 20; i++) {
     int prio = 1 + i % (configMAX_PRIORITIES-1);
     printf("Create task %u with prio %d\n", i, prio);
     xTaskCreate( testTask, /* The function that implements the task. */
