@@ -52,8 +52,6 @@ typedef int32_t    s32_t;
 typedef uint32_t mem_ptr_t;
 typedef int sys_prot_t;
 
-#define __sio_fd_t_defined 1
-
 // Compiler hints for packing lwip's structures
 
 #define PACK_STRUCT_BEGIN
