@@ -26,8 +26,8 @@
  * Author: Simon Goldschmidt
  *
  */
-#ifndef __LWIP_NETDB_H__
-#define __LWIP_NETDB_H__
+#ifndef LWIP_HDR_NETDB_H
+#define LWIP_HDR_NETDB_H
 
 #include "lwip/opt.h"
 
@@ -61,6 +61,7 @@ extern "C" {
 #define EAI_SERVICE     201
 #define EAI_FAIL        202
 #define EAI_MEMORY      203
+#define EAI_FAMILY      204
 
 #define HOST_NOT_FOUND  210
 #define NO_DATA         211
@@ -92,8 +93,10 @@ struct addrinfo {
 };
 #endif /* LWIP_DNS_API_DECLARE_STRUCTS */
 
+#define NETDB_ELEM_SIZE           (sizeof(struct addrinfo) + sizeof(struct sockaddr_in) + DNS_MAX_NAME_LENGTH + 1)
+
 #if LWIP_DNS_API_DECLARE_H_ERRNO
-/* application accessable error code set by the DNS API functions */
+/* application accessible error code set by the DNS API functions */
 extern int h_errno;
 #endif /* LWIP_DNS_API_DECLARE_H_ERRNO*/
 
@@ -121,4 +124,4 @@ int lwip_getaddrinfo(const char *nodename,
 
 #endif /* LWIP_DNS && LWIP_SOCKET */
 
-#endif /* __LWIP_NETDB_H__ */
+#endif /* LWIP_HDR_NETDB_H */

@@ -56,7 +56,11 @@
 #include "lwip/dns.h"
 #include "lwip/timers.h"
 #include "netif/etharp.h"
+#include "lwip/ip6.h"
+#include "lwip/nd6.h"
+#include "lwip/mld6.h"
 #include "lwip/api.h"
+#include "netif/ppp/ppp_impl.h"
 
 /* Compile-time sanity checks for configuration errors.
  * These can be done independently of LWIP_DEBUG, without penalty.
@@ -69,9 +73,6 @@
 #endif
 #if (!LWIP_UDP && LWIP_UDPLITE)
   #error "If you want to use UDP Lite, you have to define LWIP_UDP=1 in your lwipopts.h"
-#endif
-#if (!LWIP_UDP && LWIP_SNMP)
-  #error "If you want to use SNMP, you have to define LWIP_UDP=1 in your lwipopts.h"
 #endif
 #if (!LWIP_UDP && LWIP_DHCP)
   #error "If you want to use DHCP, you have to define LWIP_UDP=1 in your lwipopts.h"
@@ -105,16 +106,31 @@
   #error "If you want to use Sequential API, you have to define MEMP_NUM_TCPIP_MSG_API>=1 in your lwipopts.h"
 #endif
 /* There must be sufficient timeouts, taking into account requirements of the subsystems. */
-#if LWIP_TIMERS && (MEMP_NUM_SYS_TIMEOUT < (LWIP_TCP + IP_REASSEMBLY + LWIP_ARP + (2*LWIP_DHCP) + LWIP_AUTOIP + LWIP_IGMP + LWIP_DNS + PPP_SUPPORT))
+#if LWIP_TIMERS && (MEMP_NUM_SYS_TIMEOUT < (LWIP_TCP + IP_REASSEMBLY + LWIP_ARP + (2*LWIP_DHCP) + LWIP_AUTOIP + LWIP_IGMP + LWIP_DNS + PPP_SUPPORT + (LWIP_IPV6 ? (1 + LWIP_IPV6_REASS + LWIP_IPV6_MLD) : 0)))
   #error "MEMP_NUM_SYS_TIMEOUT is too low to accomodate all required timeouts"
 #endif
 #if (IP_REASSEMBLY && (MEMP_NUM_REASSDATA > IP_REASS_MAX_PBUFS))
   #error "MEMP_NUM_REASSDATA > IP_REASS_MAX_PBUFS doesn't make sense since each struct ip_reassdata must hold 2 pbufs at least!"
 #endif
 #endif /* !MEMP_MEM_MALLOC */
-#if (LWIP_TCP && (TCP_WND > 0xffff))
-  #error "If you want to use TCP, TCP_WND must fit in an u16_t, so, you have to reduce it in your lwipopts.h"
+#if LWIP_WND_SCALE
+#if (LWIP_TCP && (TCP_WND > 0xffffffff))
+  #error "If you want to use TCP, TCP_WND must fit in an u32_t, so, you have to reduce it in your lwipopts.h"
 #endif
+#if (LWIP_TCP && LWIP_WND_SCALE > 14)
+  #error "The maximum valid window scale value is 14!"
+#endif
+#if (LWIP_TCP && (TCP_WND > (0xFFFFU << TCP_RCV_SCALE)))
+  #error "TCP_WND is bigger than the configured LWIP_WND_SCALE allows!"
+#endif
+#if (LWIP_TCP && ((TCP_WND >> TCP_RCV_SCALE) == 0))
+  #error "TCP_WND is too small for the configured LWIP_WND_SCALE (results in zero window)!"
+#endif
+#else /* LWIP_WND_SCALE */
+#if (LWIP_TCP && (TCP_WND > 0xffff))
+  #error "If you want to use TCP, TCP_WND must fit in an u16_t, so, you have to reduce it in your lwipopts.h (or enable window scaling)"
+#endif
+#endif /* LWIP_WND_SCALE */
 #if (LWIP_TCP && (TCP_SND_QUEUELEN > 0xffff))
   #error "If you want to use TCP, TCP_SND_QUEUELEN must fit in an u16_t, so, you have to reduce it in your lwipopts.h"
 #endif
@@ -124,7 +140,7 @@
 #if (LWIP_TCP && ((TCP_MAXRTX > 12) || (TCP_SYNMAXRTX > 12)))
   #error "If you want to use TCP, TCP_MAXRTX and TCP_SYNMAXRTX must less or equal to 12 (due to tcp_backoff table), so, you have to reduce them in your lwipopts.h"
 #endif
-#if (LWIP_TCP && TCP_LISTEN_BACKLOG && (TCP_DEFAULT_LISTEN_BACKLOG < 0) || (TCP_DEFAULT_LISTEN_BACKLOG > 0xff))
+#if (LWIP_TCP && TCP_LISTEN_BACKLOG && ((TCP_DEFAULT_LISTEN_BACKLOG < 0) || (TCP_DEFAULT_LISTEN_BACKLOG > 0xff)))
   #error "If you want to use TCP backlog, TCP_DEFAULT_LISTEN_BACKLOG must fit into an u8_t"
 #endif
 #if (LWIP_NETIF_API && (NO_SYS==1))
@@ -133,8 +149,11 @@
 #if ((LWIP_SOCKET || LWIP_NETCONN) && (NO_SYS==1))
   #error "If you want to use Sequential API, you have to define NO_SYS=0 in your lwipopts.h"
 #endif
-#if (!LWIP_NETCONN && LWIP_SOCKET)
-  #error "If you want to use Socket API, you have to define LWIP_NETCONN=1 in your lwipopts.h"
+#if (LWIP_PPP_API && (NO_SYS==1))
+  #error "If you want to use PPP API, you have to define NO_SYS=0 in your lwipopts.h"
+#endif
+#if (LWIP_PPP_API && (PPP_SUPPORT==0))
+  #error "If you want to use PPP API, you have to enable PPP_SUPPORT in your lwipopts.h"
 #endif
 #if (((!LWIP_DHCP) || (!LWIP_AUTOIP)) && LWIP_DHCP_AUTOIP_COOP)
   #error "If you want to use DHCP/AUTOIP cooperation mode, you have to define LWIP_DHCP=1 and LWIP_AUTOIP=1 in your lwipopts.h"
@@ -166,14 +185,17 @@
 #if (DNS_LOCAL_HOSTLIST && !DNS_LOCAL_HOSTLIST_IS_DYNAMIC && !(defined(DNS_LOCAL_HOSTLIST_INIT)))
   #error "you have to define define DNS_LOCAL_HOSTLIST_INIT {{'host1', 0x123}, {'host2', 0x234}} to initialize DNS_LOCAL_HOSTLIST"
 #endif
-#if PPP_SUPPORT && !PPPOS_SUPPORT & !PPPOE_SUPPORT
-  #error "PPP_SUPPORT needs either PPPOS_SUPPORT or PPPOE_SUPPORT turned on"
+#if PPP_SUPPORT && !PPPOS_SUPPORT && !PPPOE_SUPPORT && !PPPOL2TP_SUPPORT
+  #error "PPP_SUPPORT needs at least one of PPPOS_SUPPORT, PPPOE_SUPPORT or PPPOL2TP_SUPPORT turned on"
+#endif
+#if PPP_SUPPORT && !PPP_IPV4_SUPPORT && !PPP_IPV6_SUPPORT
+  #error "PPP_SUPPORT needs PPP_IPV4_SUPPORT and/or PPP_IPV6_SUPPORT turned on"
 #endif
 #if !LWIP_ETHERNET && (LWIP_ARP || PPPOE_SUPPORT)
   #error "LWIP_ETHERNET needs to be turned on for LWIP_ARP or PPPOE_SUPPORT"
 #endif
-#if LWIP_IGMP && !defined(LWIP_RAND)
-  #error "When using IGMP, LWIP_RAND() needs to be defined to a random-function returning an u32_t random value"
+#if (LWIP_IGMP || LWIP_IPV6) && !defined(LWIP_RAND)
+  #error "When using IGMP or IPv6, LWIP_RAND() needs to be defined to a random-function returning an u32_t random value"
 #endif
 #if LWIP_TCPIP_CORE_LOCKING_INPUT && !LWIP_TCPIP_CORE_LOCKING
   #error "When using LWIP_TCPIP_CORE_LOCKING_INPUT, LWIP_TCPIP_CORE_LOCKING must be enabled, too"
@@ -194,9 +216,6 @@
 #endif /* LWIP_NETCONN && LWIP_TCP */ 
 #if LWIP_SOCKET
 /* Check that the SO_* socket options and SOF_* lwIP-internal flags match */
-#if SO_ACCEPTCONN != SOF_ACCEPTCONN
-  #error "SO_ACCEPTCONN != SOF_ACCEPTCONN"
-#endif
 #if SO_REUSEADDR != SOF_REUSEADDR
   #error "WARNING: SO_REUSEADDR != SOF_REUSEADDR"
 #endif
@@ -206,9 +225,6 @@
 #if SO_BROADCAST != SOF_BROADCAST
   #error "WARNING: SO_BROADCAST != SOF_BROADCAST"
 #endif
-#if SO_LINGER != SOF_LINGER
-  #error "WARNING: SO_LINGER != SOF_LINGER"
-#endif
 #endif /* LWIP_SOCKET */
 
 
@@ -216,9 +232,6 @@
  */
 #ifdef MEMP_NUM_TCPIP_MSG
   #error "MEMP_NUM_TCPIP_MSG option is deprecated. Remove it from your lwipopts.h."
-#endif
-#ifdef MEMP_NUM_API_MSG
-  #error "MEMP_NUM_API_MSG option is deprecated. Remove it from your lwipopts.h."
 #endif
 #ifdef TCP_REXMIT_DEBUG
   #error "TCP_REXMIT_DEBUG option is deprecated. Remove it from your lwipopts.h."
@@ -273,6 +286,9 @@
 #if TCP_SNDQUEUELOWAT >= TCP_SND_QUEUELEN
   #error "lwip_sanity_check: WARNING: TCP_SNDQUEUELOWAT must be less than TCP_SND_QUEUELEN. If you know what you are doing, define LWIP_DISABLE_TCP_SANITY_CHECKS to 1 to disable this error."
 #endif
+#if !MEMP_MEM_MALLOC && (PBUF_POOL_BUFSIZE <= (PBUF_LINK_HLEN + PBUF_IP_HLEN + PBUF_TRANSPORT_HLEN))
+  #error "lwip_sanity_check: WARNING: PBUF_POOL_BUFSIZE does not provide enough space for protocol headers. If you know what you are doing, define LWIP_DISABLE_TCP_SANITY_CHECKS to 1 to disable this error."
+#endif
 #if !MEMP_MEM_MALLOC && (TCP_WND > (PBUF_POOL_SIZE * (PBUF_POOL_BUFSIZE - (PBUF_LINK_HLEN + PBUF_IP_HLEN + PBUF_TRANSPORT_HLEN))))
   #error "lwip_sanity_check: WARNING: TCP_WND is larger than space provided by PBUF_POOL_SIZE * (PBUF_POOL_BUFSIZE - protocol headers). If you know what you are doing, define LWIP_DISABLE_TCP_SANITY_CHECKS to 1 to disable this error."
 #endif
@@ -297,9 +313,6 @@ lwip_init(void)
   memp_init();
   pbuf_init();
   netif_init();
-#if LWIP_SOCKET
-  lwip_socket_init();
-#endif /* LWIP_SOCKET */
   ip_init();
 #if LWIP_ARP
   etharp_init();
@@ -325,6 +338,16 @@ lwip_init(void)
 #if LWIP_DNS
   dns_init();
 #endif /* LWIP_DNS */
+#if LWIP_IPV6
+  ip6_init();
+  nd6_init();
+#if LWIP_IPV6_MLD
+  mld6_init();
+#endif /* LWIP_IPV6_MLD */
+#endif /* LWIP_IPV6 */
+#if PPP_SUPPORT
+  ppp_init();
+#endif
 
 #if LWIP_TIMERS
   sys_timeouts_init();

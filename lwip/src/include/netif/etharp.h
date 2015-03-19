@@ -32,8 +32,8 @@
  *
  */
 
-#ifndef __NETIF_ETHARP_H__
-#define __NETIF_ETHARP_H__
+#ifndef LWIP_HDR_NETIF_ETHARP_H
+#define LWIP_HDR_NETIF_ETHARP_H
 
 #include "lwip/opt.h"
 
@@ -57,7 +57,7 @@ extern "C" {
 #endif
 PACK_STRUCT_BEGIN
 struct eth_addr {
-  PACK_STRUCT_FIELD(u8_t addr[ETHARP_HWADDR_LEN]);
+  PACK_STRUCT_FLD_8(u8_t addr[ETHARP_HWADDR_LEN]);
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
@@ -71,10 +71,10 @@ PACK_STRUCT_BEGIN
 /** Ethernet header */
 struct eth_hdr {
 #if ETH_PAD_SIZE
-  PACK_STRUCT_FIELD(u8_t padding[ETH_PAD_SIZE]);
+  PACK_STRUCT_FLD_8(u8_t padding[ETH_PAD_SIZE]);
 #endif
-  PACK_STRUCT_FIELD(struct eth_addr dest);
-  PACK_STRUCT_FIELD(struct eth_addr src);
+  PACK_STRUCT_FLD_S(struct eth_addr dest);
+  PACK_STRUCT_FLD_S(struct eth_addr src);
   PACK_STRUCT_FIELD(u16_t type);
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
@@ -115,13 +115,13 @@ PACK_STRUCT_BEGIN
 struct etharp_hdr {
   PACK_STRUCT_FIELD(u16_t hwtype);
   PACK_STRUCT_FIELD(u16_t proto);
-  PACK_STRUCT_FIELD(u8_t  hwlen);
-  PACK_STRUCT_FIELD(u8_t  protolen);
+  PACK_STRUCT_FLD_8(u8_t  hwlen);
+  PACK_STRUCT_FLD_8(u8_t  protolen);
   PACK_STRUCT_FIELD(u16_t opcode);
-  PACK_STRUCT_FIELD(struct eth_addr shwaddr);
-  PACK_STRUCT_FIELD(struct ip_addr2 sipaddr);
-  PACK_STRUCT_FIELD(struct eth_addr dhwaddr);
-  PACK_STRUCT_FIELD(struct ip_addr2 dipaddr);
+  PACK_STRUCT_FLD_S(struct eth_addr shwaddr);
+  PACK_STRUCT_FLD_S(struct ip_addr2 sipaddr);
+  PACK_STRUCT_FLD_S(struct eth_addr dhwaddr);
+  PACK_STRUCT_FLD_S(struct ip_addr2 dipaddr);
 } PACK_STRUCT_STRUCT;
 PACK_STRUCT_END
 #ifdef PACK_STRUCT_USE_INCLUDES
@@ -129,27 +129,43 @@ PACK_STRUCT_END
 #endif
 
 #define SIZEOF_ETHARP_HDR 28
-#define SIZEOF_ETHARP_PACKET (SIZEOF_ETH_HDR + SIZEOF_ETHARP_HDR)
 
-/** 5 seconds period */
-#define ARP_TMR_INTERVAL 5000
+#define SIZEOF_ETHARP_PACKET    (SIZEOF_ETH_HDR + SIZEOF_ETHARP_HDR)
+#if ETHARP_SUPPORT_VLAN && defined(LWIP_HOOK_VLAN_SET)
+#define SIZEOF_ETHARP_PACKET_TX (SIZEOF_ETHARP_PACKET + SIZEOF_VLAN_HDR)
+#else /* ETHARP_SUPPORT_VLAN && defined(LWIP_HOOK_VLAN_SET) */
+#define SIZEOF_ETHARP_PACKET_TX SIZEOF_ETHARP_PACKET
+#endif /* ETHARP_SUPPORT_VLAN && defined(LWIP_HOOK_VLAN_SET) */
 
-#define ETHTYPE_ARP       0x0806U
-#define ETHTYPE_IP        0x0800U
-#define ETHTYPE_VLAN      0x8100U
+/** 1 seconds period */
+#define ARP_TMR_INTERVAL 1000
+
+/* A list of often ethtypes (although lwIP does not use all of them): */
+#define ETHTYPE_IP        0x0800U  /* Internet protocol v4 */
+#define ETHTYPE_ARP       0x0806U  /* Address resolution protocol */
+#define ETHTYPE_WOL       0x0842U  /* Wake on lan */
+#define ETHTYPE_VLAN      0x8100U  /* Virtual local area network */
+#define ETHTYPE_IPV6      0x86DDU  /* Internet protocol v6 */
 #define ETHTYPE_PPPOEDISC 0x8863U  /* PPP Over Ethernet Discovery Stage */
 #define ETHTYPE_PPPOE     0x8864U  /* PPP Over Ethernet Session Stage */
+#define ETHTYPE_JUMBO     0x8870U  /* Jumbo Frames */
+#define ETHTYPE_PROFINET  0x8892U  /* Process field network */
+#define ETHTYPE_ETHERCAT  0x88A4U  /* Ethernet for control automation technology */
+#define ETHTYPE_LLDP      0x88CCU  /* Link layer discovery protocol */
+#define ETHTYPE_SERCOS    0x88CDU  /* Serial real-time communication system */
+#define ETHTYPE_PTP       0x88F7U  /* Precision time protocol */
+#define ETHTYPE_QINQ      0x9100U  /* Q-in-Q, 802.1ad */
 
 /** MEMCPY-like macro to copy to/from struct eth_addr's that are local variables
  * or known to be 32-bit aligned within the protocol header. */
 #ifndef ETHADDR32_COPY
-#define ETHADDR32_COPY(src, dst)  SMEMCPY(src, dst, ETHARP_HWADDR_LEN)
+#define ETHADDR32_COPY(dst, src)  SMEMCPY(dst, src, ETHARP_HWADDR_LEN)
 #endif
 
 /** MEMCPY-like macro to copy to/from struct eth_addr's that are no local
  * variables and known to be 16-bit aligned within the protocol header. */
 #ifndef ETHADDR16_COPY
-#define ETHADDR16_COPY(src, dst)  SMEMCPY(src, dst, ETHARP_HWADDR_LEN)
+#define ETHADDR16_COPY(dst, src)  SMEMCPY(dst, src, ETHARP_HWADDR_LEN)
 #endif
 
 #if LWIP_ARP /* don't build if not configured for use in lwipopts.h */
@@ -178,13 +194,13 @@ struct etharp_q_entry {
 };
 #endif /* ARP_QUEUEING */
 
-#define etharp_init() /* Compatibility define, not init needed. */
+#define etharp_init() /* Compatibility define, no init needed. */
 void etharp_tmr(void);
-s8_t etharp_find_addr(struct netif *netif, ip_addr_t *ipaddr,
-         struct eth_addr **eth_ret, ip_addr_t **ip_ret);
-err_t etharp_output(struct netif *netif, struct pbuf *q, ip_addr_t *ipaddr);
-err_t etharp_query(struct netif *netif, ip_addr_t *ipaddr, struct pbuf *q);
-err_t etharp_request(struct netif *netif, ip_addr_t *ipaddr);
+s8_t etharp_find_addr(struct netif *netif, const ip_addr_t *ipaddr,
+         struct eth_addr **eth_ret, const ip_addr_t **ip_ret);
+err_t etharp_output(struct netif *netif, struct pbuf *q, const ip_addr_t *ipaddr);
+err_t etharp_query(struct netif *netif, const ip_addr_t *ipaddr, struct pbuf *q);
+err_t etharp_request(struct netif *netif, const ip_addr_t *ipaddr);
 /** For Ethernet network interfaces, we might want to send "gratuitous ARP";
  *  this is an ARP packet sent by a node in order to spontaneously cause other
  *  nodes to update an entry in their ARP cache.
@@ -193,8 +209,8 @@ err_t etharp_request(struct netif *netif, ip_addr_t *ipaddr);
 void etharp_cleanup_netif(struct netif *netif);
 
 #if ETHARP_SUPPORT_STATIC_ENTRIES
-err_t etharp_add_static_entry(ip_addr_t *ipaddr, struct eth_addr *ethaddr);
-err_t etharp_remove_static_entry(ip_addr_t *ipaddr);
+err_t etharp_add_static_entry(const ip_addr_t *ipaddr, struct eth_addr *ethaddr);
+err_t etharp_remove_static_entry(const ip_addr_t *ipaddr);
 #endif /* ETHARP_SUPPORT_STATIC_ENTRIES */
 
 #if LWIP_AUTOIP
@@ -213,10 +229,10 @@ err_t ethernet_input(struct pbuf *p, struct netif *netif);
 
 extern const struct eth_addr ethbroadcast, ethzero;
 
-#endif /* LWIP_ARP || LWIP_ETHERNET */
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __NETIF_ARP_H__ */
+#endif /* LWIP_ARP || LWIP_ETHERNET */
+
+#endif /* LWIP_HDR_NETIF_ARP_H */

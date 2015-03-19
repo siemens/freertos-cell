@@ -87,7 +87,9 @@
 
 /* lwIP includes */
 #include "lwip/tcpip.h"
-#include "ppp/ppp.h"
+#include "lwip/pppapi.h"
+#include "netif/ppp/pppos.h"
+#include "netif/slipif.h"
 #include "lwip/inet.h"
 /* }}} */
 
@@ -568,46 +570,134 @@ static void prvSetupHardware(void)
 
 /* {{{1 PPP */
 
-static void linkStatusCB(void *ctx, int errCode, void *arg)
+static void status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 {
-  int *connected = (int *) ctx;
-  struct ppp_addrs *addrs = arg;
+  struct netif *pppif = ppp_netif(pcb);
+  LWIP_UNUSED_ARG(ctx);
 
-  printf("ctx = %p, errCode = %d arg = %p conn=%d\n", ctx, errCode, arg, *connected);
-
-  if (errCode == PPPERR_NONE) {
-    /* We are connected */
-    *connected = 1;
-    UART_OUTPUT("ip_addr = %s\n", inet_ntoa(addrs->our_ipaddr));
-    UART_OUTPUT("netmask = %s\n", inet_ntoa(addrs->netmask));
-    UART_OUTPUT("dns1    = %s\n", inet_ntoa(addrs->dns1));
-    UART_OUTPUT("dns2    = %s\n", inet_ntoa(addrs->dns2));
-  } else {
-    /* We have lost connection */
-    *connected = 0;
+  switch(err_code) {
+    case PPPERR_NONE: {
+#if LWIP_DNS
+                        ip_addr_t ns;
+#endif /* LWIP_DNS */
+                        printf("status_cb: Connected\n");
+#if PPP_IPV4_SUPPORT
+                        printf("   our_ipaddr  = %s\n", ipaddr_ntoa(&pppif->ip_addr));
+                        printf("   his_ipaddr  = %s\n", ipaddr_ntoa(&pppif->gw));
+                        printf("   netmask     = %s\n", ipaddr_ntoa(&pppif->netmask));
+#if LWIP_DNS
+                        ns = dns_getserver(0);
+                        printf("   dns1        = %s\n", ipaddr_ntoa(&ns));
+                        ns = dns_getserver(1);
+                        printf("   dns2        = %s\n", ipaddr_ntoa(&ns));
+#endif /* LWIP_DNS */
+#endif /* PPP_IPV4_SUPPORT */
+#if PPP_IPV6_SUPPORT
+                        printf("   our6_ipaddr = %s\n", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+#endif /* PPP_IPV6_SUPPORT */
+                        break;
+                      }
+    case PPPERR_PARAM: {
+                         printf("status_cb: Invalid parameter\n");
+                         break;
+                       }
+    case PPPERR_OPEN: {
+                        printf("status_cb: Unable to open PPP session\n");
+                        break;
+                      }
+    case PPPERR_DEVICE: {
+                          printf("status_cb: Invalid I/O device for PPP\n");
+                          break;
+                        }
+    case PPPERR_ALLOC: {
+                         printf("status_cb: Unable to allocate resources\n");
+                         break;
+                       }
+    case PPPERR_USER: {
+                        printf("status_cb: User interrupt\n");
+                        break;
+                      }
+    case PPPERR_CONNECT: {
+                           printf("status_cb: Connection lost\n");
+                           break;
+                         }
+    case PPPERR_AUTHFAIL: {
+                            printf("status_cb: Failed authentication challenge\n");
+                            break;
+                          }
+    case PPPERR_PROTOCOL: {
+                            printf("status_cb: Failed to meet protocol\n");
+                            break;
+                          }
+    case PPPERR_PEERDEAD: {
+                            printf("status_cb: Connection timeout\n");
+                            break;
+                          }
+    case PPPERR_IDLETIMEOUT: {
+                               printf("status_cb: Idle Timeout\n");
+                               break;
+                             }
+    case PPPERR_CONNECTTIME: {
+                               printf("status_cb: Max connect time reached\n");
+                               break;
+                             }
+    case PPPERR_LOOPBACK: {
+                            printf("status_cb: Loopback detected\n");
+                            break;
+                          }
+    default: {
+               printf("status_cb: Unknown error code %d\n", err_code);
+               break;
+             }
   }
+
+  /*
+   * This should be in the switch case, this is put outside of the switch
+   * case for example readability.
+   */
+
+  if (err_code == PPPERR_NONE) {
+    return;
+  }
+
+  /* ppp_close() was previously called, don't reconnect */
+  if (err_code == PPPERR_USER) {
+    /* ppp_free(); -- can be called here */
+    return;
+  }
+
+  /*
+   * Try to reconnect in 30 seconds, if you need a modem chatscript you have
+   * to do a much better signaling here ;-)
+   */
+  ppp_connect(pcb, 30);
 }
 
 static void pppTask(void *pvParameters)
 {
   int connected = 0;
+  struct netif nif;
+  err_t err = slipif_init(&nif);
+  configASSERT(ERR_OK == err);
+  ppp_pcb *pd = pppos_create(&nif, ser_dev, status_cb, &connected);
   while(1) {
-    int pd = pppOverSerialOpen(ser_dev, linkStatusCB, &connected);
-    if(pd >= 0) {
+    if(pd) {
+      const char *username = "rtosuser";
+      const char *password = "rtospass";
+      ppp_set_auth(pd, PPPAUTHTYPE_ANY, username, password);
       // the thread was successfully started.
       while (!connected) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        UART_OUTPUT("PPP: pd=%d still not connected ...\n\r", pd);
+        UART_OUTPUT("PPP: pd=%p still not connected ...\n\r", pd);
       }
       /* Now we are connected */
       while(connected) {
         vTaskDelay(pdMS_TO_TICKS(500));
         UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
       }
-      pppClose(pd);
     }
     else {
-      UART_OUTPUT("PPP over serial failed: err=%d\n\r", pd);
+      UART_OUTPUT("PPP over serial failed\n\r");
       vTaskDelay(pdMS_TO_TICKS(500));
       connected = 0;
     }
@@ -630,18 +720,6 @@ void inmate_main(void)
   /* initialise lwIP. This creates a new thread, tcpip_thread, that
    * communicates with the pppInputThread (see below) */
   tcpip_init(NULL, NULL);
-  /* initialise PPP. This needs to be done only once after boot up, to
-   * initialize global variables, etc. */
-  pppInit();
-  /* set the method of authentication. Use PPPAUTHTYPE_PAP, or
-   * PPPAUTHTYPE_CHAP for more security .
-   * If this is not called, the default is PPPAUTHTYPE_NONE. 
-   */
-  {
-    const char *username = "rtosuser";
-    const char *password = "rtospass";
-    pppSetAuth(PPPAUTHTYPE_ANY, username, password);
-  }
 
   xTaskCreate( PPP_TEST_MODE ? pppTask : uartTask, /* The function that implements the task. */
       "ppptask", /* The text name assigned to the task - for debug only; not used by the kernel. */

@@ -30,8 +30,8 @@
  *         Simon Goldschmidt
  *
  */
-#ifndef __LWIP_TIMERS_H__
-#define __LWIP_TIMERS_H__
+#ifndef LWIP_HDR_TIMERS_H
+#define LWIP_HDR_TIMERS_H
 
 #include "lwip/opt.h"
 
@@ -87,6 +87,7 @@ void sys_untimeout(sys_timeout_handler handler, void *arg);
 #if NO_SYS
 void sys_check_timeouts(void);
 void sys_restart_timeouts(void);
+u32_t sys_timeouts_sleeptime(void);
 #else /* NO_SYS */
 void sys_timeouts_mbox_fetch(sys_mbox_t *mbox, void **msg);
 #endif /* NO_SYS */
@@ -97,4 +98,4 @@ void sys_timeouts_mbox_fetch(sys_mbox_t *mbox, void **msg);
 #endif
 
 #endif /* LWIP_TIMERS */
-#endif /* __LWIP_TIMERS_H__ */
+#endif /* LWIP_HDR_TIMERS_H */

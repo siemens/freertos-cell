@@ -32,8 +32,8 @@
  * Author: Christiaan Simons <christiaan.simons@axon.tv>
  */
 
-#ifndef __LWIP_SNMP_MSG_H__
-#define __LWIP_SNMP_MSG_H__
+#ifndef LWIP_HDR_SNMP_MSG_H
+#define LWIP_HDR_SNMP_MSG_H
 
 #include "lwip/opt.h"
 #include "lwip/snmp.h"
@@ -265,7 +265,7 @@ struct snmp_msg_trap
   ip_addr_t dip;
 
   /* source enterprise ID (sysObjectID) */
-  struct snmp_obj_id *enterprise;
+  const struct snmp_obj_id *enterprise;
   /* source IP address, raw network order format */
   u8_t sip_raw[4];
   /* generic trap code */
@@ -282,8 +282,14 @@ struct snmp_msg_trap
 
 /** Agent Version constant, 0 = v1 oddity */
 extern const s32_t snmp_version;
-/** Agent default "public" community string */
-extern const char snmp_publiccommunity[7];
+/** Agent community string */
+extern const char *snmp_community;
+#if SNMP_COMMUNITY_EXT
+/** Agent community string for write access */
+extern const char *snmp_community_write;
+/** Agent community string for sending traps */
+extern const char *snmp_community_trap;
+#endif /* SNMP_COMMUNITY_EXT */
 
 extern struct snmp_msg_trap trap_msg;
 
@@ -302,7 +308,7 @@ struct snmp_varbind* snmp_varbind_tail_remove(struct snmp_varbind_root *root);
 /** Handle an internal (recv) or external (private response) event. */
 void snmp_msg_event(u8_t request_id);
 err_t snmp_send_response(struct snmp_msg_pstat *m_stat);
-err_t snmp_send_trap(s8_t generic_trap, struct snmp_obj_id *eoid, s32_t specific_trap);
+err_t snmp_send_trap(s8_t generic_trap, const struct snmp_obj_id *eoid, s32_t specific_trap);
 void snmp_coldstart_trap(void);
 void snmp_authfail_trap(void);
 
@@ -312,4 +318,4 @@ void snmp_authfail_trap(void);
 
 #endif /* LWIP_SNMP */
 
-#endif /* __LWIP_SNMP_MSG_H__ */
+#endif /* LWIP_HDR_SNMP_MSG_H */

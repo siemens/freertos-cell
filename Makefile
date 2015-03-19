@@ -40,10 +40,10 @@ FREERTOS_RUNTIME_OBJS = freertos-runtime/string.o \
 LWIP_DIR = $(src)/lwip/src
 # Core code
 LWIP_C_SRCS += \
-	$(LWIP_DIR)/core/timers.c \
 	$(LWIP_DIR)/core/def.c \
 	$(LWIP_DIR)/core/dhcp.c \
 	$(LWIP_DIR)/core/dns.c \
+	$(LWIP_DIR)/core/inet_chksum.c \
 	$(LWIP_DIR)/core/init.c \
 	$(LWIP_DIR)/core/mem.c \
 	$(LWIP_DIR)/core/memp.c \
@@ -55,6 +55,7 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/tcp.c \
 	$(LWIP_DIR)/core/tcp_in.c \
 	$(LWIP_DIR)/core/tcp_out.c \
+	$(LWIP_DIR)/core/timers.c \
 	$(LWIP_DIR)/core/udp.c
 # IPv4 code
 CFLAGS += -I$(LWIP_DIR)/include/ipv4
@@ -62,12 +63,9 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/ipv4/autoip.c \
 	$(LWIP_DIR)/core/ipv4/icmp.c \
 	$(LWIP_DIR)/core/ipv4/igmp.c \
-	$(LWIP_DIR)/core/ipv4/inet.c \
-	$(LWIP_DIR)/core/ipv4/inet_chksum.c \
-	$(LWIP_DIR)/core/ipv4/ip_addr.c \
-	$(LWIP_DIR)/core/ipv4/ip.c \
-	$(LWIP_DIR)/core/ipv4/ip_frag.c \
-	$(LWIP_DIR)/netif/etharp.c
+	$(LWIP_DIR)/core/ipv4/ip4_addr.c \
+	$(LWIP_DIR)/core/ipv4/ip4.c \
+	$(LWIP_DIR)/core/ipv4/ip_frag.c
 # API code
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/api_lib.c \
@@ -76,22 +74,38 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/netbuf.c \
 	$(LWIP_DIR)/api/netdb.c \
 	$(LWIP_DIR)/api/netifapi.c \
+	$(LWIP_DIR)/api/pppapi.c \
 	$(LWIP_DIR)/api/sockets.c \
 	$(LWIP_DIR)/api/tcpip.c
+# netif
+LWIP_C_SRCS += \
+	$(LWIP_DIR)/netif/etharp.c \
+	$(LWIP_DIR)/netif/ethernetif.c \
+	$(LWIP_DIR)/netif/slipif.c
 # PPP
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/netif/ppp/auth.c \
-	$(LWIP_DIR)/netif/ppp/chap.c \
-	$(LWIP_DIR)/netif/ppp/chpms.c \
+	$(LWIP_DIR)/netif/ppp/ccp.c \
+	$(LWIP_DIR)/netif/ppp/chap-md5.c \
+	$(LWIP_DIR)/netif/ppp/chap_ms.c \
+	$(LWIP_DIR)/netif/ppp/chap-new.c \
+	$(LWIP_DIR)/netif/ppp/demand.c \
+	$(LWIP_DIR)/netif/ppp/eap.c \
+	$(LWIP_DIR)/netif/ppp/ecp.c \
+	$(LWIP_DIR)/netif/ppp/eui64.c \
 	$(LWIP_DIR)/netif/ppp/fsm.c \
 	$(LWIP_DIR)/netif/ppp/ipcp.c \
+	$(LWIP_DIR)/netif/ppp/ipv6cp.c \
 	$(LWIP_DIR)/netif/ppp/lcp.c \
 	$(LWIP_DIR)/netif/ppp/magic.c \
-	$(LWIP_DIR)/netif/ppp/md5.c \
-	$(LWIP_DIR)/netif/ppp/pap.c \
+	$(LWIP_DIR)/netif/ppp/multilink.c \
 	$(LWIP_DIR)/netif/ppp/ppp.c \
-	$(LWIP_DIR)/netif/ppp/ppp_oe.c \
-	$(LWIP_DIR)/netif/ppp/randm.c \
+	$(LWIP_DIR)/netif/ppp/pppcrypt.c \
+	$(LWIP_DIR)/netif/ppp/pppoe.c \
+	$(LWIP_DIR)/netif/ppp/pppol2tp.c \
+	$(LWIP_DIR)/netif/ppp/pppos.c \
+	$(LWIP_DIR)/netif/ppp/upap.c \
+	$(LWIP_DIR)/netif/ppp/utils.c \
 	$(LWIP_DIR)/netif/ppp/vj.c
 # PPP support
 LWIP_C_SRCS += \
@@ -115,7 +129,7 @@ LWIP_AR = liblwip.a
 
 all: $(EXE_STEM).bin
 
-DEPS := $(OBJS:.o=.d) $(ALL_FREERTOS_OBJS:.o=.d)
+DEPS := $(OBJS:.o=.d) $(ALL_FREERTOS_OBJS:.o=.d) $(LWIP_OBJS:.o=.d)
 
 $(EXE_STEM).elf: $(OBJS) $(LWIP_AR) $(FREERTOS_AR)
 	$(LD) $(LDFLAGS) -o $@ $^

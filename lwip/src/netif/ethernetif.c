@@ -50,10 +50,11 @@
 #include "lwip/def.h"
 #include "lwip/mem.h"
 #include "lwip/pbuf.h"
-#include <lwip/stats.h>
-#include <lwip/snmp.h>
+#include "lwip/stats.h"
+#include "lwip/snmp.h"
+#include "lwip/ethip6.h"
 #include "netif/etharp.h"
-#include "netif/ppp_oe.h"
+#include "netif/ppp/pppoe.h"
 
 /* Define those to better describe your network interface. */
 #define IFNAME0 'e'
@@ -100,6 +101,19 @@ low_level_init(struct netif *netif)
   /* don't set NETIF_FLAG_ETHARP if this device is not an ethernet one */
   netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_LINK_UP;
  
+#if LWIP_IPV6 && LWIP_IPV6_MLD
+  /*
+   * For hardware/netifs that implement MAC filtering.
+   * All-nodes link-local is handled by default, so we must let the hardware know
+   * to allow multicast packets in.
+   * Should set mld_mac_filter previously. */
+  if (netif->mld_mac_filter != NULL) {
+    ip6_addr_t ip6_allnodes_ll;
+    ip6_addr_set_allnodes_linklocal(&ip6_allnodes_ll);
+    netif->mld_mac_filter(netif, &ip6_allnodes_ll, MLD6_ADD_MAC_FILTER);
+  }
+#endif /* LWIP_IPV6 && LWIP_IPV6_MLD */
+
   /* Do whatever else is needed to initialize interface. */  
 }
 
@@ -115,7 +129,7 @@ low_level_init(struct netif *netif)
  *
  * @note Returning ERR_MEM here if a DMA queue of your MAC is full can lead to
  *       strange results. You might consider waiting for space in the DMA queue
- *       to become availale since the stack doesn't retry to send a packet
+ *       to become available since the stack doesn't retry to send a packet
  *       dropped because of memory failure (except for the TCP timers).
  */
 
@@ -238,6 +252,7 @@ ethernetif_input(struct netif *netif)
   switch (htons(ethhdr->type)) {
   /* IP or ARP packet? */
   case ETHTYPE_IP:
+  case ETHTYPE_IPV6:
   case ETHTYPE_ARP:
 #if PPPOE_SUPPORT
   /* PPPoE packet? */
@@ -304,6 +319,9 @@ ethernetif_init(struct netif *netif)
    * from it if you have to do some checks before sending (e.g. if link
    * is available...) */
   netif->output = etharp_output;
+#if LWIP_IPV6
+  netif->output_ip6 = ethip6_output;
+#endif /* LWIP_IPV6 */
   netif->linkoutput = low_level_output;
   
   ethernetif->ethaddr = (struct eth_addr *)&(netif->hwaddr[0]);
