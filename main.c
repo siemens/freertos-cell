@@ -635,7 +635,7 @@ void inmate_main(void)
         tskIDLE_PRIORITY+1, /* The priority assigned to the task. */
         NULL );								    /* The task handle is not required, so NULL is passed. */
   }
-  printf("vTaskStartScheduler goes active\n");
+  printf("vTaskStartScheduler goes active with %lu tasks\n", uxTaskGetNumberOfTasks());
   vTaskStartScheduler();
   printf("vTaskStartScheduler terminated: strange!!!\n");
 	while (1) {

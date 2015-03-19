@@ -78,7 +78,7 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/netifapi.c \
 	$(LWIP_DIR)/api/sockets.c \
 	$(LWIP_DIR)/api/tcpip.c
-# PPP support
+# PPP
 LWIP_C_SRCS += \
 	lwip/src/netif/ppp/auth.c \
 	lwip/src/netif/ppp/chap.c \
@@ -92,8 +92,11 @@ LWIP_C_SRCS += \
 	lwip/src/netif/ppp/ppp.c \
 	lwip/src/netif/ppp/ppp_oe.c \
 	lwip/src/netif/ppp/randm.c \
-	lwip/src/netif/ppp/vj.c \
-	rand.c
+	lwip/src/netif/ppp/vj.c
+# PPP support
+LWIP_C_SRCS += \
+	rand.c \
+	sio_ppp.c
 
 CFLAGS += -I$(LWIP_DIR)/include -I$(LWIP_DIR)/netif
 # Platform code 
