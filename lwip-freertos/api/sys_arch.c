@@ -263,3 +263,11 @@ void sys_mutex_free(sys_mutex_t *mutex)
 	vQueueDelete( *mutex );
   SYS_STATS_DEC(mutex.used);
 }
+
+u32_t sys_jiffies( void )
+{ 
+  TickType_t xTicks = xTaskGetTickCount();
+
+  return ( u32_t )(xTicks / configTICK_RATE_HZ);
+}
+

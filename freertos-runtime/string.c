@@ -148,6 +148,15 @@ int memcmp(const void *cs, const void *ct, size_t count)
 	return res;
 }
 
+char *strncpy(char *dest, const char *src, size_t n)
+{
+  char *r = dest;
+  size_t cnt = 0;
+  while(*src && cnt++ < n)
+    *dest++ = *src++;
+  return r;
+}
+
 #if 0
 int strcmp(const char *cs, const char *ct)
 {

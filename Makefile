@@ -38,7 +38,6 @@ FREERTOS_RUNTIME_OBJS = freertos-runtime/string.o \
 # LWIP tcpip stack
 #
 LWIP_DIR = $(src)/lwip/src
-CFLAGS += -I$(LWIP_DIR)/include -DUSE_LWIP_STACK
 # Core code
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/timers.c \
@@ -79,10 +78,27 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/netifapi.c \
 	$(LWIP_DIR)/api/sockets.c \
 	$(LWIP_DIR)/api/tcpip.c
+# PPP support
+LWIP_C_SRCS += \
+	lwip/src/netif/ppp/auth.c \
+	lwip/src/netif/ppp/chap.c \
+	lwip/src/netif/ppp/chpms.c \
+	lwip/src/netif/ppp/fsm.c \
+	lwip/src/netif/ppp/ipcp.c \
+	lwip/src/netif/ppp/lcp.c \
+	lwip/src/netif/ppp/magic.c \
+	lwip/src/netif/ppp/md5.c \
+	lwip/src/netif/ppp/pap.c \
+	lwip/src/netif/ppp/ppp.c \
+	lwip/src/netif/ppp/ppp_oe.c \
+	lwip/src/netif/ppp/randm.c \
+	lwip/src/netif/ppp/vj.c \
+	rand.c
+
+CFLAGS += -I$(LWIP_DIR)/include -I$(LWIP_DIR)/netif
 # Platform code 
 LWIP_PLATFORM_DIR = $(src)/lwip-freertos
 CFLAGS += -I$(LWIP_PLATFORM_DIR)/include -I$(LWIP_PLATFORM_DIR)/include/lwip
-CFLAGS += -I$(LWIP_PLATFORM_DIR)/emac -I$(LWIP_PLATFORM_DIR)/common
 LWIP_C_SRCS += \
 	$(LWIP_PLATFORM_DIR)/api/sys_arch.c
 		

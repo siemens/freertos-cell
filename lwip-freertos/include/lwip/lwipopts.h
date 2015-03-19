@@ -33,6 +33,14 @@
 #define __LWIPOPTS_H__
 #include "FreeRTOS.h"
 
+#define PPP_SUPPORT 1
+/* Enable PPP over serial */
+#define PPPOS_SUPPORT PPP_SUPPORT
+/* Disable PPP over ethernet */
+#define PPPOE_SUPPORT 0
+#define PAP_SUPPORT 0
+#define CHAP_SUPPORT 0
+
 #define LWIP_DEBUG
 #undef LWIP_DEBUG
 #ifdef LWIP_DEBUG

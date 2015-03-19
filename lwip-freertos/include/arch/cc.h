@@ -34,6 +34,7 @@
 #define __CC_H__
 
 #include <stdio.h>
+#include <stdint.h>
 #include "cpu.h"
 //#include "system.h"
 
@@ -42,14 +43,16 @@
 
 // Typedefs for the types used by lwip
 
-typedef unsigned   char    u8_t;
-typedef signed     char    s8_t;
-typedef unsigned   short   u16_t;
-typedef signed     short   s16_t;
-typedef unsigned   long    u32_t;
-typedef signed     long    s32_t;
-typedef u32_t mem_ptr_t;
+typedef uint8_t    u8_t;
+typedef int8_t    s8_t;
+typedef uint16_t   u16_t;
+typedef int16_t   s16_t;
+typedef uint32_t    u32_t;
+typedef int32_t    s32_t;
+typedef uint32_t mem_ptr_t;
 typedef int sys_prot_t;
+
+#define __sio_fd_t_defined 1
 
 // Compiler hints for packing lwip's structures
 
