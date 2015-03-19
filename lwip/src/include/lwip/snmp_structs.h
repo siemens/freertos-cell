@@ -34,8 +34,8 @@
  * Author: Christiaan Simons <christiaan.simons@axon.tv>
  */
 
-#ifndef __LWIP_SNMP_STRUCTS_H__
-#define __LWIP_SNMP_STRUCTS_H__
+#ifndef LWIP_HDR_SNMP_STRUCTS_H
+#define LWIP_HDR_SNMP_STRUCTS_H
 
 #include "lwip/opt.h"
 
@@ -202,7 +202,7 @@ struct mib_external_node
 
   /* additional struct members */
   /** points to an external (in memory) record of some sort of addressing
-      information, passed to and interpreted by the funtions below */
+      information, passed to and interpreted by the functions below */
   void* addr_inf;
   /** tree levels under this node */
   u8_t tree_levels;
@@ -265,4 +265,4 @@ u8_t snmp_iso_prefix_expand(u8_t ident_len, s32_t *ident, struct snmp_obj_id *oi
 
 #endif /* LWIP_SNMP */
 
-#endif /* __LWIP_SNMP_STRUCTS_H__ */
+#endif /* LWIP_HDR_SNMP_STRUCTS_H */

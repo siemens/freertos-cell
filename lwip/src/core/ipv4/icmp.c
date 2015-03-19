@@ -70,7 +70,7 @@ static void icmp_send_response(struct pbuf *p, u8_t type, u8_t code);
  * Currently only processes icmp echo requests and sends
  * out the echo response.
  *
- * @param p the icmp echo request packet, p->payload pointing to the ip header
+ * @param p the icmp echo request packet, p->payload pointing to the icmp header
  * @param inp the netif on which this packet was received
  */
 void
@@ -87,10 +87,9 @@ icmp_input(struct pbuf *p, struct netif *inp)
   ICMP_STATS_INC(icmp.recv);
   snmp_inc_icmpinmsgs();
 
-
-  iphdr = (struct ip_hdr *)p->payload;
+  iphdr = (struct ip_hdr *)ip_current_header();
   hlen = IPH_HL(iphdr) * 4;
-  if (pbuf_header(p, -hlen) || (p->tot_len < sizeof(u16_t)*2)) {
+  if (p->len < sizeof(u16_t)*2) {
     LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: short ICMP (%"U16_F" bytes) received\n", p->tot_len));
     goto lenerr;
   }
@@ -110,17 +109,17 @@ icmp_input(struct pbuf *p, struct netif *inp)
       int accepted = 1;
 #if !LWIP_MULTICAST_PING
       /* multicast destination address? */
-      if (ip_addr_ismulticast(&current_iphdr_dest)) {
+      if (ip_addr_ismulticast(ip_current_dest_addr())) {
         accepted = 0;
       }
 #endif /* LWIP_MULTICAST_PING */
 #if !LWIP_BROADCAST_PING
       /* broadcast destination address? */
-      if (ip_addr_isbroadcast(&current_iphdr_dest, inp)) {
+      if (ip_addr_isbroadcast(ip_current_dest_addr(), inp)) {
         accepted = 0;
       }
 #endif /* LWIP_BROADCAST_PING */
-      /* broadcast or multicast destination address not acceptd? */
+      /* broadcast or multicast destination address not accepted? */
       if (!accepted) {
         LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: Not echoing to multicast or broadcast pings\n"));
         ICMP_STATS_INC(icmp.err);
@@ -134,6 +133,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
       LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: bad ICMP echo received\n"));
       goto lenerr;
     }
+#if CHECKSUM_CHECK_ICMP
     if (inet_chksum_pbuf(p) != 0) {
       LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: checksum failed for received ICMP echo\n"));
       pbuf_free(p);
@@ -141,34 +141,32 @@ icmp_input(struct pbuf *p, struct netif *inp)
       snmp_inc_icmpinerrors();
       return;
     }
+#endif
 #if LWIP_ICMP_ECHO_CHECK_INPUT_PBUF_LEN
     if (pbuf_header(p, (PBUF_IP_HLEN + PBUF_LINK_HLEN))) {
       /* p is not big enough to contain link headers
        * allocate a new one and copy p into it
        */
       struct pbuf *r;
-      /* switch p->payload to ip header */
-      if (pbuf_header(p, hlen)) {
-        LWIP_ASSERT("icmp_input: moving p->payload to ip header failed\n", 0);
-        goto memerr;
-      }
       /* allocate new packet buffer with space for link headers */
-      r = pbuf_alloc(PBUF_LINK, p->tot_len, PBUF_RAM);
+      r = pbuf_alloc(PBUF_LINK, p->tot_len + hlen, PBUF_RAM);
       if (r == NULL) {
         LWIP_DEBUGF(ICMP_DEBUG, ("icmp_input: allocating new pbuf failed\n"));
         goto memerr;
       }
       LWIP_ASSERT("check that first pbuf can hold struct the ICMP header",
                   (r->len >= hlen + sizeof(struct icmp_echo_hdr)));
-      /* copy the whole packet including ip header */
-      if (pbuf_copy(r, p) != ERR_OK) {
-        LWIP_ASSERT("icmp_input: copying to new pbuf failed\n", 0);
-        goto memerr;
-      }
+      /* copy the ip header */
+      MEMCPY(r->payload, iphdr, hlen);
       iphdr = (struct ip_hdr *)r->payload;
       /* switch r->payload back to icmp header */
       if (pbuf_header(r, -hlen)) {
-        LWIP_ASSERT("icmp_input: restoring original p->payload failed\n", 0);
+        LWIP_ASSERT("icmp_input: moving r->payload to icmp header failed\n", 0);
+        goto memerr;
+      }
+      /* copy the rest of the packet without ip header */
+      if (pbuf_copy(r, p) != ERR_OK) {
+        LWIP_ASSERT("icmp_input: copying to new pbuf failed\n", 0);
         goto memerr;
       }
       /* free the original p */
@@ -187,7 +185,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
     /* We generate an answer by switching the dest and src ip addresses,
      * setting the icmp type to ECHO_RESPONSE and updating the checksum. */
     iecho = (struct icmp_echo_hdr *)p->payload;
-    ip_addr_copy(iphdr->src, *ip_current_dest_addr());
+    ip_addr_copy(iphdr->src, inp->ip_addr);
     ip_addr_copy(iphdr->dest, *ip_current_src_addr());
     ICMPH_TYPE_SET(iecho, ICMP_ER);
 #if CHECKSUM_GEN_ICMP
@@ -218,7 +216,7 @@ icmp_input(struct pbuf *p, struct netif *inp)
       LWIP_ASSERT("Can't move over header in packet", 0);
     } else {
       err_t ret;
-      /* send an ICMP packet, src addr is the dest addr of the curren packet */
+      /* send an ICMP packet, src addr is the dest addr of the current packet */
       ret = ip_output_if(p, ip_current_dest_addr(), IP_HDRINCL,
                    ICMP_TTL, 0, IP_PROTO_ICMP, inp);
       if (ret != ERR_OK) {
@@ -325,7 +323,9 @@ icmp_send_response(struct pbuf *p, u8_t type, u8_t code)
 
   /* calculate checksum */
   icmphdr->chksum = 0;
+#if CHECKSUM_GEN_ICMP
   icmphdr->chksum = inet_chksum(icmphdr, q->len);
+#endif
   ICMP_STATS_INC(icmp.xmit);
   /* increase number of messages attempted to send */
   snmp_inc_icmpoutmsgs();

@@ -45,8 +45,9 @@ tcp_setup(void)
 static void
 tcp_teardown(void)
 {
-  netif_list = NULL;
   tcp_remove_all();
+  netif_list = NULL;
+  netif_default = NULL;
 }
 
 
@@ -77,16 +78,19 @@ START_TEST(test_tcp_recv_inseq)
   struct tcp_pcb* pcb;
   struct pbuf* p;
   char data[] = {1, 2, 3, 4};
-  ip_addr_t remote_ip, local_ip;
+  ip_addr_t remote_ip, local_ip, netmask;
   u16_t data_len;
   u16_t remote_port = 0x100, local_port = 0x101;
   struct netif netif;
+  struct test_tcp_txcounters txcounters;
   LWIP_UNUSED_ARG(_i);
 
   /* initialize local vars */
   memset(&netif, 0, sizeof(netif));
   IP4_ADDR(&local_ip, 192, 168, 1, 1);
   IP4_ADDR(&remote_ip, 192, 168, 1, 2);
+  IP4_ADDR(&netmask,   255, 255, 255, 0);
+  test_tcp_init_netif(&netif, &txcounters, &local_ip, &netmask);
   data_len = sizeof(data);
   /* initialize counter struct */
   memset(&counters, 0, sizeof(counters));
@@ -654,14 +658,14 @@ END_TEST
 Suite *
 tcp_suite(void)
 {
-  TFun tests[] = {
-    test_tcp_new_abort,
-    test_tcp_recv_inseq,
-    test_tcp_fast_retx_recover,
-    test_tcp_fast_rexmit_wraparound,
-    test_tcp_rto_rexmit_wraparound,
-    test_tcp_tx_full_window_lost_from_unacked,
-    test_tcp_tx_full_window_lost_from_unsent
+  testfunc tests[] = {
+    TESTFUNC(test_tcp_new_abort),
+    TESTFUNC(test_tcp_recv_inseq),
+    TESTFUNC(test_tcp_fast_retx_recover),
+    TESTFUNC(test_tcp_fast_rexmit_wraparound),
+    TESTFUNC(test_tcp_rto_rexmit_wraparound),
+    TESTFUNC(test_tcp_tx_full_window_lost_from_unacked),
+    TESTFUNC(test_tcp_tx_full_window_lost_from_unsent)
   };
-  return create_suite("TCP", tests, sizeof(tests)/sizeof(TFun), tcp_setup, tcp_teardown);
+  return create_suite("TCP", tests, sizeof(tests)/sizeof(testfunc), tcp_setup, tcp_teardown);
 }

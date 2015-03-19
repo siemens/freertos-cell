@@ -29,8 +29,8 @@
  * Author: Adam Dunkels <adam@sics.se>
  *
  */
-#ifndef __LWIP_ARCH_H__
-#define __LWIP_ARCH_H__
+#ifndef LWIP_HDR_ARCH_H
+#define LWIP_HDR_ARCH_H
 
 #ifndef LITTLE_ENDIAN
 #define LITTLE_ENDIAN 1234
@@ -64,9 +64,25 @@ extern "C" {
 #define PACK_STRUCT_END
 #endif /* PACK_STRUCT_END */
 
+#ifndef PACK_STRUCT_STRUCT
+#define PACK_STRUCT_STRUCT
+#endif /* PACK_STRUCT_STRUCT */
+
 #ifndef PACK_STRUCT_FIELD
 #define PACK_STRUCT_FIELD(x) x
 #endif /* PACK_STRUCT_FIELD */
+
+/* Used for struct fields of u8_t,
+ * where some compilers warn that packing is not necessary */
+#ifndef PACK_STRUCT_FLD_8
+#define PACK_STRUCT_FLD_8(x) PACK_STRUCT_FIELD(x)
+#endif /* PACK_STRUCT_FLD_8 */
+
+/* Used for struct fields of that are packed structs themself,
+ * where some compilers warn that packing is not necessary */
+#ifndef PACK_STRUCT_FLD_S
+#define PACK_STRUCT_FLD_S(x) PACK_STRUCT_FIELD(x)
+#endif /* PACK_STRUCT_FLD_S */
 
 
 #ifndef LWIP_UNUSED_ARG
@@ -214,4 +230,4 @@ extern int errno;
 }
 #endif
 
-#endif /* __LWIP_ARCH_H__ */
+#endif /* LWIP_HDR_ARCH_H */

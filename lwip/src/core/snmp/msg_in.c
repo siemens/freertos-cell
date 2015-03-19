@@ -50,15 +50,21 @@
 /* public (non-static) constants */
 /** SNMP v1 == 0 */
 const s32_t snmp_version = 0;
-/** default SNMP community string */
-const char snmp_publiccommunity[7] = "public";
+/** SNMP community string */
+const char *snmp_community = SNMP_COMMUNITY;
+#if SNMP_COMMUNITY_EXT
+/** SNMP community string for write access */
+const char *snmp_community_write = SNMP_COMMUNITY_WRITE;
+/** SNMP community string for sending traps */
+const char *snmp_community_trap = SNMP_COMMUNITY_TRAP;
+#endif /* SNMP_COMMUNITY_EXT */
 
 /* statically allocated buffers for SNMP_CONCURRENT_REQUESTS */
 struct snmp_msg_pstat msg_input_list[SNMP_CONCURRENT_REQUESTS];
 /* UDP Protocol Control Block */
 struct udp_pcb *snmp1_pcb;
 
-static void snmp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t port);
+static void snmp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
 static err_t snmp_pdu_header_check(struct pbuf *p, u16_t ofs, u16_t pdu_len, u16_t *ofs_ret, struct snmp_msg_pstat *m_stat);
 static err_t snmp_pdu_dec_varbindlist(struct pbuf *p, u16_t ofs, u16_t *ofs_ret, struct snmp_msg_pstat *m_stat);
 
@@ -102,6 +108,80 @@ snmp_init(void)
   snmp_coldstart_trap();
 }
 
+/**
+ * Returns current SNMP community string.
+ * @return current SNMP community string
+ */
+const char *
+snmp_get_community(void)
+{
+  return snmp_community;
+}
+
+/**
+ * Sets SNMP community string.
+ * The string itself (its storage) must be valid throughout the whole life of
+ * program (or until it is changed to sth else).
+ *
+ * @param community is a pointer to new community string
+ */
+void
+snmp_set_community(const char * const community)
+{
+  LWIP_ASSERT("community string is too long!", strlen(community) <= SNMP_COMMUNITY_STR_LEN);
+  snmp_community = community;
+}
+
+#if SNMP_COMMUNITY_EXT
+/**
+ * Returns current SNMP write-access community string.
+ * @return current SNMP write-access community string
+ */
+const char *
+snmp_get_community_write(void)
+{
+  return snmp_community_write;
+}
+
+/**
+ * Returns current SNMP community string used for sending traps.
+ * @return current SNMP community string used for sending traps
+ */
+const char *
+snmp_get_community_trap(void)
+{
+  return snmp_community_trap;
+}
+
+/**
+ * Sets SNMP community string for write-access.
+ * The string itself (its storage) must be valid throughout the whole life of
+ * program (or until it is changed to sth else).
+ *
+ * @param community is a pointer to new write-access community string
+ */
+void
+snmp_set_community_write(const char * const community)
+{
+  LWIP_ASSERT("community string is too long!", strlen(community) <= SNMP_COMMUNITY_STR_LEN);
+  snmp_community_write = community;
+}
+
+/**
+ * Sets SNMP community string used for sending traps.
+ * The string itself (its storage) must be valid throughout the whole life of
+ * program (or until it is changed to sth else).
+ *
+ * @param community is a pointer to new trap community string
+ */
+void
+snmp_set_community_trap(const char * const community)
+{
+  LWIP_ASSERT("community string is too long!", strlen(community) <= SNMP_COMMUNITY_STR_LEN);
+  snmp_community_trap = community;
+}
+#endif /* SNMP_COMMUNITY_EXT */
+
 static void
 snmp_error_response(struct snmp_msg_pstat *msg_ps, u8_t error)
 {
@@ -110,6 +190,10 @@ snmp_error_response(struct snmp_msg_pstat *msg_ps, u8_t error)
   struct snmp_varbind *vbi = msg_ps->invb.head;
   struct snmp_varbind *vbo = msg_ps->outvb.head;
   for (v=0; v<msg_ps->vb_idx; v++) {
+    if (vbi->ident != NULL) {
+      /* free previously allocated value before overwriting the pointer */
+      memp_free(MEMP_SNMP_VALUE, vbi->ident);
+    }
     vbi->ident_len = vbo->ident_len;
     vbo->ident_len = 0;
     vbi->ident = vbo->ident;
@@ -156,7 +240,7 @@ snmp_ok_response(struct snmp_msg_pstat *msg_ps)
  * Service an internal or external event for SNMP GET.
  *
  * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
- * @param msg_ps points to the assosicated message process state
+ * @param msg_ps points to the associated message process state
  */
 static void
 snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
@@ -174,8 +258,7 @@ snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
 
     /* translate answer into a known lifeform */
     en->get_object_def_a(request_id, np.ident_len, np.ident, &msg_ps->ext_object_def);
-    if ((msg_ps->ext_object_def.instance != MIB_OBJECT_NONE) &&
-        (msg_ps->ext_object_def.access & MIB_ACCESS_READ))
+    if (msg_ps->ext_object_def.instance != MIB_OBJECT_NONE)
     {
       msg_ps->state = SNMP_MSG_EXTERNAL_GET_VALUE;
       en->get_value_q(request_id, &msg_ps->ext_object_def);
@@ -205,7 +288,7 @@ snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
       /* move name from invb to outvb */
       vb->ident = msg_ps->vb_ptr->ident;
       vb->ident_len = msg_ps->vb_ptr->ident_len;
-      /* ensure this memory is refereced once only */
+      /* ensure this memory is referenced once only */
       msg_ps->vb_ptr->ident = NULL;
       msg_ps->vb_ptr->ident_len = 0;
 
@@ -293,8 +376,7 @@ snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
 
           msg_ps->state = SNMP_MSG_INTERNAL_GET_OBJDEF;
           mn->get_object_def(np.ident_len, np.ident, &object_def);
-          if ((object_def.instance != MIB_OBJECT_NONE) &&
-            (object_def.access & MIB_ACCESS_READ))
+          if (object_def.instance != MIB_OBJECT_NONE)
           {
             mn = mn;
           }
@@ -318,7 +400,7 @@ snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
               /* move name from invb to outvb */
               vb->ident = msg_ps->vb_ptr->ident;
               vb->ident_len = msg_ps->vb_ptr->ident_len;
-              /* ensure this memory is refereced once only */
+              /* ensure this memory is referenced once only */
               msg_ps->vb_ptr->ident = NULL;
               msg_ps->vb_ptr->ident_len = 0;
 
@@ -387,7 +469,7 @@ snmp_msg_get_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
  * Service an internal or external event for SNMP GETNEXT.
  *
  * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
- * @param msg_ps points to the assosicated message process state
+ * @param msg_ps points to the associated message process state
  */
 static void
 snmp_msg_getnext_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
@@ -532,7 +614,7 @@ snmp_msg_getnext_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
  * Service an internal or external event for SNMP SET.
  *
  * @param request_id identifies requests from 0 to (SNMP_CONCURRENT_REQUESTS-1)
- * @param msg_ps points to the assosicated message process state
+ * @param msg_ps points to the associated message process state
  */
 static void
 snmp_msg_set_event(u8_t request_id, struct snmp_msg_pstat *msg_ps)
@@ -819,7 +901,7 @@ snmp_msg_event(u8_t request_id)
 
 /* lwIP UDP receive callback function */
 static void
-snmp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, ip_addr_t *addr, u16_t port)
+snmp_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
   struct snmp_msg_pstat *msg_ps;
   u8_t req_idx;
@@ -972,15 +1054,29 @@ snmp_pdu_header_check(struct pbuf *p, u16_t ofs, u16_t pdu_len, u16_t *ofs_ret, 
   len = ((len < (SNMP_COMMUNITY_STR_LEN))?(len):(SNMP_COMMUNITY_STR_LEN));
   m_stat->community[len] = 0;
   m_stat->com_strlen = (u8_t)len;
-  if (strncmp(snmp_publiccommunity, (const char*)m_stat->community, SNMP_COMMUNITY_STR_LEN) != 0)
-  {
-    /** @todo: move this if we need to check more names */
-    snmp_inc_snmpinbadcommunitynames();
-    snmp_authfail_trap();
-    return ERR_ARG;
-  }
   ofs += (1 + len_octets + len);
   snmp_asn1_dec_type(p, ofs, &type);
+#if SNMP_COMMUNITY_EXT
+  if (strncmp(snmp_community_write, (const char*)m_stat->community, SNMP_COMMUNITY_STR_LEN) != 0)
+  {
+    /* community does not match the write-access community, check if this is a SetRequest */
+    if (type == (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_SET_REQ))
+    {
+      /* wrong community for SetRequest PDU */
+      snmp_inc_snmpinbadcommunitynames();
+      snmp_authfail_trap();
+      return ERR_ARG;
+    }
+#else /* SNMP_COMMUNITY_EXT */
+  {
+#endif /* SNMP_COMMUNITY_EXT */
+    if (strncmp(snmp_community, (const char*)m_stat->community, SNMP_COMMUNITY_STR_LEN) != 0)
+    {
+      snmp_inc_snmpinbadcommunitynames();
+      snmp_authfail_trap();
+      return ERR_ARG;
+    }
+  }
   derr = snmp_asn1_dec_length(p, ofs+1, &len_octets, &len);
   if (derr != ERR_OK)
   {
@@ -1067,6 +1163,9 @@ snmp_pdu_header_check(struct pbuf *p, u16_t ofs, u16_t pdu_len, u16_t *ofs_ret, 
   }
   switch (m_stat->error_status)
   {
+    case SNMP_ES_NOERROR:
+      /* nothing to do */
+      break;
     case SNMP_ES_TOOBIG:
       snmp_inc_snmpintoobigs();
       break;
@@ -1081,6 +1180,9 @@ snmp_pdu_header_check(struct pbuf *p, u16_t ofs, u16_t pdu_len, u16_t *ofs_ret, 
       break;
     case SNMP_ES_GENERROR:
       snmp_inc_snmpingenerrs();
+      break;
+    default:
+      LWIP_DEBUGF(SNMP_MSG_DEBUG, ("snmp_pdu_header_check(): unknown error_status: %d\n", (int)m_stat->error_status));
       break;
   }
   ofs += (1 + len_octets + len);

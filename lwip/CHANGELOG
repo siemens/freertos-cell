@@ -1,10 +1,551 @@
 HISTORY
 
-(CVS HEAD)
+(git master)
 
   * [Enter new changes just after this line - do not remove this line]
 
- ++ New features:
+  ++ New features:
+
+  2015-03-06: Philip Gladstone
+  * netif.h/.c: patch #8359 (Provide utility function to add an IPv6 address to
+    an interface)
+
+  2015-03-05: Simon Goldschmidt
+  * netif.c, ip4.c, dhcp.c, autoip.c: fixed bug #37068 (netif up/down handling
+    is unclear): correclty separated administrative status of a netif (up/down)
+    from 'valid address' status
+    ATTENTION: netif_set_up() now always has to be called, even when dhcp/autoip
+    is used!
+
+  2015-02-26: patch by TabascoEye
+  * netif.c, udp.h/.c: fixed bug #40753 (re-bind UDP pcbs on change of IP address)
+
+  2015-02-22: chrysn, Simon Goldschmidt
+  * *.*: Changed nearly all functions taking 'ip(X)_addr_t' pointer to take
+    const pointers (changed user callbacks: raw_recv_fn, udp_recv_fn; changed
+    port callbacks: netif_output_fn, netif_igmp_mac_filter_fn)
+
+  2015-02-19: Ivan Delamer
+  * netif.h, dhcp.c: Removed unused netif flag for DHCP. The preferred way to evaluate
+    if DHCP is active is through netif->dhcp field.
+
+  2015-02-19: Ivan Delamer
+  * netif.h, slipif.c, ppp.c: Removed unused netif flag for point to point connections
+
+  2015-02-18: Simon Goldschmidt
+  * api_lib.c: fixed bug #37958 "netconn API doesn't handle correctly
+    connections half-closed by peer"
+
+  2015-02-18: Simon Goldschmidt
+  * tcp.c: tcp_alloc() prefers killing CLOSING/LAST_ACK over active connections
+    (see bug #39565)
+
+  2015-02-16: Claudius Zingerli, Sergio Caprile
+  * opt.h, dhcp.h/.c: patch #8361 "Add support for NTP option in DHCP"
+
+  2015-02-14: Simon Goldschmidt
+  * opt.h, snmp*: added support for write-access community and dedicated
+    community for sending traps
+
+  2015-02-13: Simon Goldschmidt
+  * opt.h, memp.c: added hook LWIP_HOOK_MEMP_AVAILABLE() to get informed when
+    a memp pool was empty and an item is now available
+
+  2015-02-13: Simon Goldschmidt
+  * opt.h, pbuf.h/.c, etharp.c: Added the option PBUF_LINK_ENCAPSULATION_HLEN to
+    allocate additional header space for TX on netifs requiring additional headers
+
+  2015-02-12: chrysn
+  * timers.h/.c: introduce sys_timeouts_sleeptime (returns the time left before
+    the next timeout is due, for NO_SYS==1)
+
+  2015-02-11: Nick van Ijzendoorn
+  * opt.h, sockets.h/c: patch #7702 "Include ability to increase the socket number
+    with defined offset"
+
+  2015-02-11: Frederick Baksik
+  * opt.h, def.h, others: patch #8423 "arch/perf.h" should be made an optional item
+
+  2015-02-11: Simon Goldschmidt
+  * api_msg.c, opt.h: started to implement fullduplex sockets/netconns
+    (note that this is highly unstable yet!)
+
+  2015-01-17: Simon Goldschmidt
+  * api: allow enabling socket API without (public) netconn API - netconn API is
+    still used by sockets, but keeping it private (static) should allow better
+    compiler optimizations
+
+  2015-01-16: Simon Goldschmidt
+  * tcp_in.c: fixed bug #20506 "Initial congestion window is very small" again
+    by implementing the calculation formula from RFC3390
+
+  2014-12-10: Simon Goldschmidt
+  * api: added option LWIP_NETCONN_SEM_PER_THREAD to use a semaphore per thread
+    instead of using one per netconn and per select call
+
+  2014-12-08: Simon Goldschmidt
+  * ip6.h: fixed bug #43778: IPv6 header version not set on 16-bit platform
+    (macro IP6H_VTCFL_SET())
+
+  2014-12-08: Simon Goldschmidt
+  * icmp.c, ip4.c, pbuf.c, udp.c, pbuf.h: task #11472 Support PBUF_REF for RX
+    (IPv6 and IPv4/v6 reassembly might not work yet)
+
+  2014-11-06: Simon Goldschmidt
+  * sockets.c/.h, init.c: lwip_socket_init() is not needed any more
+    -> compatibility define
+
+  2014-09-16: Simon Goldschmidt
+  * dns.c, opt.h: reduced ram usage by parsing DNS responses in place
+
+  2014-09-16: Simon Goldschmidt
+  * pbuf.h/.c: added pbuf_take_at() and pbuf_put_at()
+
+  2014-09-15: Simon Goldschmidt
+  * dns.c: added source port randomization to make the DNS client more robust
+    (see bug #43144)
+
+  2013-09-02: Simon Goldschmidt
+  * arch.h and many other files: added optional macros PACK_STRUCT_FLD_8() and
+    PACK_STRUCT_FLD_S() to prevent gcc 4 from warning about struct members that
+    do not need packing
+
+  2013-08-19: Simon Goldschmidt
+  * netif.h: bug #42998: made NETIF_MAX_HWADDR_LEN overridable for some special
+    networks
+
+  2013-03-17: Simon Goldschmidt (patch by Ghobad Emadi)
+  * opt.h, etharp.c: Added LWIP_HOOK_ETHARP_GET_GW to implement IPv4 routing with
+    multiple gateways
+
+  2013-04-20: Fatih Asici
+  * opt.h, etharp.h/.c: patch #7993: Added support for transmitting packets
+    with VLAN headers via hook function LWIP_HOOK_VLAN_SET and to check them
+    via hook function LWIP_HOOK_VLAN_CHECK
+
+  2014-02-20: Simon Goldschmidt (based on patch by Artem Pisarenko)
+  * patch #7885: modification of api modules to support FreeRTOS-MPU
+    (don't pass stack-pointers to other threads)
+
+  2014-02-05: Simon Goldschmidt (patch by "xtian" and "alex_ab")
+  * patch #6537/#7858: TCP window scaling support
+
+  2014-01-17: Jiri Engelthaler
+  * icmp, icmp6, opt.h: patch #8027: Completed HW checksuming for IPv4 and
+    IPv6 ICMP's
+
+  2012-08-22: Sylvain Rochet
+  * New PPP stack for lwIP, developed in ppp-new branch.
+    Based from pppd 2.4.5, released 2009-11-17, with huge changes to match
+    code size and memory requirements for embedded devices, including:
+    - Gluing together the previous low-level PPP code in lwIP to pppd 2.4.5, which
+      is more or less what pppd sys-* files are, so that we get something working
+      using the unix port.
+    - Merged some patchs from lwIP Git repository which add interesting features
+      or fix bugs.
+    - Merged some patchs from Debian pppd package which add interesting features
+      or fix bugs.
+    - Ported PPP timeout handling to the lwIP timers system
+    - Disabled all the PPP code using filesystem access, replaced in necessary cases
+      to configuration variables.
+    - Disabled all the PPP code forking processes.
+    - Removed IPX support, lwIP does not support IPX.
+    - Ported and improved random module from the previous PPP port.
+    - Removed samba TDB (file-driven database) usage, because it needs a filesystem.
+    - MS-CHAP required a DES implementation, we added the latest PolarSSL DES
+      implementation which is under a BSD-ish license.
+    - Also switched to PolarSSL MD4,MD5,SHA1 implementations, which are meant to be
+      used in embedded devices with reduced memory footprint.
+    - Removed PPP configuration file parsing support. 
+    - Added macro definition EAP_SUPPORT to make EAP support optional.
+    - Added macro definition CHAP_SUPPORT to make CHAP support optional.
+    - Added macro definition MSCHAP_SUPPORT to make MSCHAP support optional.
+    - Added macro definition PAP_SUPPORT to make PAP support optional.
+    - Cleared all Linux syscall calls.
+    - Disabled demand support using a macro, so that it can be ported later.
+    - Disabled ECP support using a macro, so that it can be ported later.
+    - Disabled CCP support using a macro, so that it can be ported later.
+    - Disabled CBCP support using a macro, so that it can be ported later.
+    - Disabled LQR support using a macro, so that it can be ported later.
+    - Print packet debug feature optional, through PRINTPKT_SUPPORT
+    - Removed POSIX signal usage.
+    - Fully ported PPPoS code from the previous port.
+    - Fully ported PPPoE code from the previous port.
+    - Fully ported VJ compression protocol code from the previous port.
+    - Removed all malloc()/free() use from PPP, replaced by stack usage or PBUF.
+    - Disabled PPP server support using a macro, so that it can be ported later.
+    - Switched all PPP debug to lwIP debug system.
+    - Created PPP Control Block (PPP PCB), removed PPP unit integer everywhere,
+      removed all global variables everywhere, did everything necessary for
+      the PPP stack to support more than one PPP session (pppd only support
+      one session per process).
+    - Removed the statically allocated output buffer, now using PBUF.
+    - Improved structure size of all PPP modules, deep analyze of code to reduce
+      variables size to the bare minimum. Switched all boolean type (char type in
+      most architecture) to compiler generated bitfields.
+    - Added PPP IPv6 support, glued lwIP IPv6 support to PPP.
+    - Now using a persistent netif interface which can then be used in lwIP
+      functions requiring a netif.
+    - Now initializing PPP in lwip_init() function.
+    - Reworked completely the PPP state machine, so that we don't end up in
+      anymore in inconsistent state, especially with PPPoE.
+    - Improved the way we handle PPP reconnection after disconnect, cleaning
+      everything required so that we start the PPP connection again from a
+      clean state.
+    - Added PPP holdoff support, allow the lwIP user to wait a little bit before
+      reconnecting, prevents connection flood, especially when using PPPoL2TP.
+    - Added PPPoL2TP LAC support (a.k.a. UDP tunnels), adding a VPN client
+      feature to lwIP, L2TP being a widely used tunnel protocol.
+    - Switched all used PPP types to lwIP types (u8t, u16t, u32t, ...)
+    - Added PPP API "sequential" thread-safe API, based from NETIFAPI.
+
+  2011-07-21: Simon Goldschmidt
+  * sockets.c, opt.h: (bug #30185): added LWIP_FIONREAD_LINUXMODE that makes
+    ioctl/FIONREAD return the size of the next pending datagram.
+
+  2011-05-25: Simon Goldschmidt
+  * again nearly the whole stack, renamed ip.c to ip4.c, ip_addr.c to ip4_addr.c,
+    combined ipv4/ipv6 inet_chksum.c, added ip.h, ip_addr.h: Combined IPv4
+    and IPv6 code where possible, added defines to access IPv4/IPv6 in non-IP
+    code so that the code is more readable.
+
+  2011-05-17: Patch by Ivan Delamer (only checked in by Simon Goldschmidt)
+  * nearly the whole stack: Finally, we got decent IPv6 support, big thanks to
+    Ivan! (this is work in progress: we're just post release anyway :-)
+
+
+  ++ Bugfixes:
+
+  2015-03-09: Simon Goldschmidt
+  * ip4.c: fixed the IPv4 part of bug #43904 (ip_route() must detect linkup status)
+
+  2015-03-04: Simon Goldschmidt
+  * nd6.c: fixed bug #43784 (a host should send at least one Router Solicitation)
+
+  2015-03-04: Valery Ushakov
+  * ip6.c: fixed bug #41094 (Byte-order bug in IPv6 fragmentation header test)
+
+  2015-03-04: Zach Smith
+  * nd6.c: fixed bug #38153 (nd6_input() byte order issues)
+
+  2015-02-26: Simon Goldschmidt
+  * netif.c, tcp.h/.c: fixed bug #44378 (TCP connections are not aborted on netif
+    remove)
+
+  2015-02-25: Simon Goldschmidt
+  * ip4.c, etharp.c: fixed bug #40177 (System hangs when dealing with corrupted
+    packets), implemented task #12357 (Ensure that malicious packets don't
+    assert-fail): improved some pbuf_header calls to not assert-fail.
+
+  2015-02-25: patch by Joel Cunningham
+  * udp.h/.c, sockets.c: fixed bug #43028 (IP_MULTICAST_TTL affects unicast
+    datagrams)
+
+  2015-02-25: patch by Greg Renda
+  * ip4_frag.c: fixed bug #38210 (ip reassembly while remove oldest datagram)
+
+  2015-02-25: Simon Goldschmidt
+  * sockets.c: fixed bug #38165 (socket with mulicast): ensure igmp membership
+    are dropped when socket (not netconn!) is closed.
+
+  2015-02-25: Simon Goldschmidt
+  * ip4.h/.c, udp.c: fixed bug #38061 (wrong multicast routing in IPv4) by
+    adding an optional default netif for multicast routing
+
+  2015-02-25: Simon Goldschmidt
+  * netconn API: fixed that netconn_connect still used message passing for
+    LWIP_TCPIP_CORE_LOCKING==1
+
+  2015-02-22: patch by Jens Nielsen
+  * icmp.c: fixed bug #38803 (Source address in broadcast ping reply)
+
+  2015-02-22: Simon Goldschmidt
+  * udp.h, sockets.c: added proper accessor functions for pcb->multicast_ip
+    (previously used by get/setsockopt only)
+
+  2015-02-18: Simon Goldschmidt
+  * sockets.c: Fixed select not reporting received FIN as 'readable' in certain
+    rare cases (bug #43779: select(), close(), and TCP retransmission error)
+
+  2015-02-17: Simon Goldschmidt
+  * err.h, sockets.c, api_msg.c: fixed bug #38853 "connect() use a wrong errno":
+    return ERR_ALREADY/EALRADY during connect, ERR_ISCONN/EISCONN when already
+    connected
+
+  2015-02-17: Simon Goldschmidt
+  * tcp_impl.h, tcp_out.c, tcp.c, api_msg.c: fixed bug #37614 "Errors from
+    ipX_output are not processed". Now tcp_output(_segment) checks for the return
+    value of ipX_output and does not try to send more on error. A netif driver
+    can call tcp_txnow() (from tcpip_thread!) to try to send again if TX buffers
+    are available again.
+
+  2015-02-14: patches by Freddie Chopin
+  * snmp*: made community writable, fixed some const pointers
+
+  2015-02-13: Simon Goldschmidt
+  * msg_in.c: fixed bug #22070 "MIB_OBJECT_WRITE_ONLY not implemented in SNMP"
+
+  2015-02-12: Simon Goldschmidt
+  * ip.h, ip4.c, ip6.c: fixed bug #36403 "ip4_input() and ip6_input() always pass
+    inp to higher layers": now the accepting netif is passed up, but the input
+    netif is available through ip_current_input_netif() if required.
+
+  2015-02-11: patch by hichard
+  * tcpip.c: fixed bug #43094 "The function tcpip_input() forget to handle IPv6"
+
+  2015-02-10: Simon Goldschmidt
+  * netconn API: fixed that netconn_close/netconn_delete still used message passing
+    for LWIP_TCPIP_CORE_LOCKING==1
+
+  2015-02-10: Simon Goldschmidt
+  * netconn/socket api: fixed bug #44225 "closing TCP socket should time out
+    eventually", implemented task #6930 "Implement SO_LINGER": closing TCP sockets
+    times out after 20 seconds or after the configured SND_TIMEOUT or depending
+    on the linger settings.
+
+  2015-01-27: Simon Goldschmidt
+  * api_msg.c: fixed that SHUT_RD followed by SHUT_WR was different to SHUT_RDWR,
+    fixed return value of lwip_netconn_do_close on unconnected netconns
+
+  2015-01-17: Simon Goldschmidt
+  * sockets.c: fixed bug #43361 select() crashes with stale FDs
+
+  2015-01-17: Simon Goldschmidt
+  * sockets.c/.h, memp_std.h: fixed bug #40788 "lwip_setsockopt_internal() crashes"
+    by rewriting set/getsockopt functions to combine checks with the actual code
+    and add more NULL checks; this also fixes that CORE_LOCKING used message
+    passing for set/getsockopt.
+
+  2014-12-19: Simon Goldschmidt
+  * opt.h, dhcp.h/.c: prevent dhcp from starting when netif link is down (only
+    when LWIP_DHCP_CHECK_LINK_UP==1, which is disabled by default for
+    compatibility reasons)
+
+  2014-12-17: Simon Goldschmidt
+  * tcp_out.c: fixed bug #43840 Checksum error for TCP_CHECKSUM_ON_COPY==1 for
+    no-copy data with odd length
+
+  2014-12-10: Simon Goldschmidt
+  * sockets.c, tcp.c, others: fixed bug #43797 set/getsockopt: SO_SNDTIMEO/SO_RCVTIMEO
+    take int as option but should take timeval (LWIP_SO_SNDRCVTIMEO_STANDARD==0 can
+    be used to revert to the old 'winsock' style behaviour)
+    Fixed implementation of SO_ACCEPTCONN to just look at the pcb state
+
+  2014-12-09: Simon Goldschmidt
+  * ip4.c: fixed bug #43596 IGMP queries from 0.0.0.0 are discarded
+
+  2014-10-21: Simon Goldschmidt (patch by Joel Cunningham and Albert Huitsing)
+  * sockts.c: fixed bugs #41495 Possible threading issue in select() and #43278
+    event_callback() handle context switch when calling sys_sem_signal()
+
+  2014-10-21: Simon Goldschmidt
+  * api_msg.c: fixed bug #38219 Assert on TCP netconn_write with sndtimeout set
+
+  2014-09-16: Kevin Cernekee
+  * dns.c: patch #8480 Fix handling of dns_seqno wraparound
+
+  2014-09-16: Simon Goldschmidt
+  * tcp_out.c: fixed bug #43192 tcp_enqueue_flags() should not check TCP_SND_QUEUELEN
+    when sending FIN
+
+  2014-09-03: Simon Goldschmidt
+  * msg_in.c: fixed bug #39355 SNMP Memory Leak in case of error
+
+  2014-09-02: Simon Goldschmidt
+  * err.h/.c, sockets.c, api_msg.c: fixed bug #43110 call getpeername() before
+    listen() will cause a error
+
+  2014-09-02: Simon Goldschmidt
+  * sockets.c: fixed bug #42117 lwip_fcntl does not set errno
+
+  2014-09-02: Simon Goldschmidt
+  * tcp.c: fixed bug #42299 tcp_abort() leaves freed pcb on tcp_bound_pcbs list
+
+  2014-08-20: Simon Goldschmidt
+  * dns.c: fixed bug #42987 lwIP is vulnerable to DNS cache poisoning due to
+    non-randomized TXIDs
+
+  2014-06-03: Simon Goldschmidt
+  * tcp_impl.h, tcp_in.c: fixed bug #37969 SYN packet dropped as short packet in
+    tcp_input function
+
+  2014-05-20: Simon Goldschmidt
+  * tcp_out.c: fixed bug #37184 tcp_write problem for pcbs in the SYN_SENT state
+
+  2014-05-19: Simon Goldschmidt
+  * *.h: Fixed bug #35874 reserved identifier violation (removed leading underscores
+    from header include guards)
+
+  2014-04-08: Simon Goldschmidt
+  * tcp.c: Fixed bug #36167 tcp server crash when client closes (maximum window)
+
+  2014-04-06: Simon Goldschmidt
+  * tcp_in.c: Fixed bug #36210 lwIP does not elicit an empty ACK when received
+    unacceptable ACK
+
+  2014-04-06: Simon Goldschmidt
+  * dhcp.c, ip4.c/.h, ip6.c/.h, udp.c/.h, ip.h: Fixed bug #41787 DHCP Discovery
+    is invalid when an IP is set to thet netif.
+
+  2014-03-14: Simon Goldschmidt
+  * tcp_out.c: Fixed bug #36153 TCP Cheksum error if LWIP_CHECKSUM_ON_COPY=1
+
+  2014-03-11: Simon Goldschmidt (patch by Mason)
+  * opt.h, sockets.c: fixed bug #35928 BSD sockets functions must set errno for
+    POSIX-compliance
+
+  2014-02-27: Simon Goldschmidt
+  * dhcp.c: fixed bug #40303 DHCP xid renewed when sending a DHCPREQUEST
+
+  2014-02-27: Simon Goldschmidt
+  * raw.c: fixed bug #41680 raw socket can not receive IPv6 packet when
+    IP_SOF_BROADCAST_RECV==1
+
+  2014-02-27: Simon Goldschmidt
+  * api_msg.c, sockets.c: fixed bug #38404 getpeeraddr returns success on
+    unconnected/listening TCP sockets
+
+  2014-02-27: Simon Goldschmidt
+  * sockets.c: fixed bug #41729 Some socket functions return Exyz instead of -1
+
+  2014-02-25: Simon Goldschmidt
+  * ip4.c: fixed bug #39514 ip_route() may return an IPv6-only interface
+
+  2014-02-25: Simon Goldschmidt, patch by Fatih Asici
+  * pbuf.c: fixed bug #39356 Wrong increment in pbuf_memfind()
+
+  2014-02-25: Simon Goldschmidt
+  * netif.c/.h, udp.c: fixed bug #39225 udp.c uses netif_matches_ip6_addr() incorrectly;
+    renamed function netif_matches_ip6_addr() to netif_get_ip6_addr_match()
+
+  2014-02-25: Simon Goldschmidt
+  * igmp.c: fixed bug #39145 IGMP membership report for 224.0.0.1
+
+  2014-02-22: Simon Goldschmidt (patch by Amir Shalem)
+  * etharp.c, opt.h: fixed bug #34681 Limit ARP queue length by ARP_QUEUE_LEN (=3)
+
+  2014-02-22: Simon Goldschmidt (patch by Amir Shalem)
+  * etharp.h/.c: fixed bug #34682 Limit ARP request flood for unresolved entry
+
+  2014-02-20: Simon Goldschmidt
+  * tcp_out.c: fixed bug #39683 Assertion "seg->tcphdr not aligned" failed with
+    MEM_ALIGNMENT = 8
+
+  2014-02-20: Simon Goldschmidt
+  * sockets.c: fixed bug #39882 No function shall set errno to 0
+
+  2014-02-20: Simon Goldschmidt
+  * mib_structs.c: fixed bug #40050 SNMP problem with MIB arrays > 255
+
+  2014-02-20: Simon Goldschmidt
+  * api.h, sockets.c: fixed bug #41499 netconn::recv_avail can overflow
+
+  2014-01-08: Stathis Voukelatos
+  * memp_std.h: patch #7928 Fixed size calculation in MALLOC memory pool
+    creation macro
+
+  2014-01-18: Brian Fahs
+  * tcp_out.c: patch #8237: tcp_rexmit_rto fails to update pcb->unsent_oversize
+    when necessary
+
+  2014-01-17: Grant Erickson, Jay Logue, Simon Goldschmidt
+  * ipv6.c, netif.c: patch #7913 Enable Support for IPv6 Loopback
+
+  2014-01-16: Stathis Voukelatos
+  * netif.c: patch #7902 Fixed netif_poll() operation when LWIP_LOOPBACK_MAX_PBUFS > 0
+
+  2014-01-14: "Freddie Chopin"
+  * snmp.h, mib2.c: fixed constness and spelling of sysdescr
+
+  2014-01-14: Simon Goldschmidt (patch by Thomas Faber)
+  * tcpip.c: patch #8241: Fix implicit declaration of ip_input with
+    LWIP_TCPIP_CORE_LOCKING_INPUT disabled
+
+  2014-01-14: chrysn
+  * timers.c: patch #8244 make timeouts usable reliably from outside of the
+    timeout routine
+
+  2014-01-10: Simon Goldschmidt
+  * ip_frag.c, ip6_frag.c: fixed bug #41041 Potential use-after-free in IPv6 reassembly
+
+  2014-01-10: Simon Goldschmidt
+  * memp.c: fixed bug #41188 Alignment error in memp_init() when MEMP_SEPARATE_POOLS==1
+
+  2014-01-10: Simon Goldschmidt
+  * tcp.c: fixed bug #39898 tcp_fasttmr() possible lock due to infinte queue process loop
+
+  2013-06-29: Simon Goldschmidt
+  * inet.h, sockets.h: partially fixed bug #37585: IPv6 compatibility (in socket structs)
+
+  2013-06-29: Simon Goldschmidt
+  * inet6.h: bug #37585/task #12600: fixed struct in6_addr.s6_addr to conform to spec
+
+  2013-04-24: patch by Liam <morepork>
+  * api_msg.c: patch #8008 Fix a potential null pointer dereference in assert
+
+  2013-04-24: Simon Goldschmidt
+  * igmp.c: fixed possible division by zero
+
+  2013-04-24: Simon Goldschmidt
+  * ip6.h, some ipv6 C files: fixed bug #38526 Coverity: Recursive Header Inclusion in ip6.h
+
+  2013-04-24: Simon Goldschmidt (patch by Emil Ljungdahl):
+  * netif.c: fixed bug #38586 netif_loop_output() "deadlocks"
+
+  2013-01-15: Simon Goldschmidt
+  * ip4.c: fixed bug #37665 ip_canforward operates on address in wrong byte order
+
+  2013-01-15: Simon Goldschmidt
+  * pbuf.h: fixed bug #38097 pbuf_free_ooseq() warning
+
+  2013-01-14: Simon Goldschmidt
+  * dns.c: fixed bug #37705 Possible memory corruption in DNS query
+
+  2013-01-11: Simon Goldschmidt
+  * raw.c: fixed bug #38066 Raw pcbs can alter packet without eating it
+
+  2012-08-22: Simon Goldschmidt
+  * memp.c: fixed bug #37166: memp_sanity check loops itself
+
+  2012-08-13: Simon Goldschmidt
+  * dhcp.c: fixed bug #36645: Calling dhcp_release before dhcp_start
+    dereferences NULL
+
+  2012-08-13: Simon Goldschmidt
+  * msg_out.c: fixed bug #36840 snmp_send_trap() NULL de-reference if traps
+    configured but no interfaces available
+
+  2012-08-13: Simon Goldschmidt
+  * dns.c: fixed bug #36899 DNS TTL 0 is cached for a long time
+
+  2012-05-11: Simon Goldschmidt (patch by Marty)
+  * memp.c: fixed bug #36412: memp.c does not compile when
+    MEMP_OVERFLOW_CHECK > zero and MEMP_SEPARATE_POOLS == 1
+
+  2012-05-03: Simon Goldschmidt (patch by Sylvain Rochet)
+  * ppp.c: fixed bug #36283 (PPP struct used on header size computation and
+    not packed)
+
+  2012-05-03: Simon Goldschmidt (patch by David Empson)
+  * ppp.c: fixed bug #36388 (PPP: checksum-only in last pbuf leads to pbuf with
+    zero length)
+
+  2012-03-25: Simon Goldschmidt
+  * api_msg.c: Fixed bug #35817: do_connect() invalidly signals op_completed
+    for UDP/RAW with LWIP_TCPIP_CORE_LOCKING==1
+
+  2012-03-25: Simon Goldschmidt
+  * api_msg.h, api_lib.c, api_msg.c, netifapi.c: fixed bug #35931: Name space
+    pollution in api_msg.c and netifapi.c
+
+  2011-08-24: Simon Goldschmidt
+  * inet6.h: fixed bug #34124 struct in6_addr does not conform to the standard
+
+
+
+(STABLE-1.4.1)
+
+  ++ New features:
 
   2012-03-25: Simon Goldschmidt (idea by Mason)
   * posix/*: added posix-compatibility include files posix/netdb.h and posix/sys/socket.h
@@ -64,7 +605,7 @@ HISTORY
     memory message
 
 
- ++ Bugfixes:
+  ++ Bugfixes:
 
   2012-09-26: Simon Goldschmidt
   * api_msg.c: fixed bug #37405 'err_tcp()' uses already freed 'netconn' object

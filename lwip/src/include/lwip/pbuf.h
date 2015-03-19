@@ -30,8 +30,8 @@
  *
  */
 
-#ifndef __LWIP_PBUF_H__
-#define __LWIP_PBUF_H__
+#ifndef LWIP_HDR_PBUF_H
+#define LWIP_HDR_PBUF_H
 
 #include "lwip/opt.h"
 #include "lwip/err.h"
@@ -42,15 +42,25 @@ extern "C" {
 
 /** Currently, the pbuf_custom code is only needed for one specific configuration
  * of IP_FRAG */
-#define LWIP_SUPPORT_CUSTOM_PBUF (IP_FRAG && !IP_FRAG_USES_STATIC_BUF && !LWIP_NETIF_TX_SINGLE_PBUF)
+#ifndef LWIP_SUPPORT_CUSTOM_PBUF
+#define LWIP_SUPPORT_CUSTOM_PBUF ((IP_FRAG && !IP_FRAG_USES_STATIC_BUF && !LWIP_NETIF_TX_SINGLE_PBUF) || (LWIP_IPV6 && LWIP_IPV6_FRAG))
+#endif
+
+/* @todo: We need a mechanism to prevent wasting memory in every pbuf
+   (TCP vs. UDP, IPv4 vs. IPv6: UDP/IPv4 packets may waste up to 28 bytes) */
 
 #define PBUF_TRANSPORT_HLEN 20
+#if LWIP_IPV6
+#define PBUF_IP_HLEN        40
+#else
 #define PBUF_IP_HLEN        20
+#endif
 
 typedef enum {
   PBUF_TRANSPORT,
   PBUF_IP,
   PBUF_LINK,
+  PBUF_RAW_TX,
   PBUF_RAW
 } pbuf_layer;
 
@@ -129,7 +139,7 @@ struct pbuf_custom {
 #endif /* PBUF_POOL_FREE_OOSEQ */
 #if NO_SYS && PBUF_POOL_FREE_OOSEQ
 extern volatile u8_t pbuf_free_ooseq_pending;
-void pbuf_free_ooseq();
+void pbuf_free_ooseq(void);
 /** When not using sys_check_timeouts(), call PBUF_CHECK_FREE_OOSEQ()
     at regular intervals from main level to check if ooseq pbufs need to be
     freed! */
@@ -149,8 +159,9 @@ struct pbuf *pbuf_alloced_custom(pbuf_layer l, u16_t length, pbuf_type type,
                                  struct pbuf_custom *p, void *payload_mem,
                                  u16_t payload_mem_len);
 #endif /* LWIP_SUPPORT_CUSTOM_PBUF */
-void pbuf_realloc(struct pbuf *p, u16_t size); 
+void pbuf_realloc(struct pbuf *p, u16_t size);
 u8_t pbuf_header(struct pbuf *p, s16_t header_size);
+u8_t pbuf_header_force(struct pbuf *p, s16_t header_size);
 void pbuf_ref(struct pbuf *p);
 u8_t pbuf_free(struct pbuf *p);
 u8_t pbuf_clen(struct pbuf *p);  
@@ -160,13 +171,18 @@ struct pbuf *pbuf_dechain(struct pbuf *p);
 err_t pbuf_copy(struct pbuf *p_to, struct pbuf *p_from);
 u16_t pbuf_copy_partial(struct pbuf *p, void *dataptr, u16_t len, u16_t offset);
 err_t pbuf_take(struct pbuf *buf, const void *dataptr, u16_t len);
+err_t pbuf_take_at(struct pbuf *buf, const void *dataptr, u16_t len, u16_t offset);
 struct pbuf *pbuf_coalesce(struct pbuf *p, pbuf_layer layer);
 #if LWIP_CHECKSUM_ON_COPY
 err_t pbuf_fill_chksum(struct pbuf *p, u16_t start_offset, const void *dataptr,
                        u16_t len, u16_t *chksum);
 #endif /* LWIP_CHECKSUM_ON_COPY */
+#if LWIP_TCP && TCP_QUEUE_OOSEQ && LWIP_WND_SCALE
+void pbuf_split_64k(struct pbuf *p, struct pbuf **rest);
+#endif /* LWIP_TCP && TCP_QUEUE_OOSEQ && LWIP_WND_SCALE */
 
 u8_t pbuf_get_at(struct pbuf* p, u16_t offset);
+void pbuf_put_at(struct pbuf* p, u16_t offset, u8_t data);
 u16_t pbuf_memcmp(struct pbuf* p, u16_t offset, const void* s2, u16_t n);
 u16_t pbuf_memfind(struct pbuf* p, const void* mem, u16_t mem_len, u16_t start_offset);
 u16_t pbuf_strstr(struct pbuf* p, const char* substr);
@@ -175,4 +191,4 @@ u16_t pbuf_strstr(struct pbuf* p, const char* substr);
 }
 #endif
 
-#endif /* __LWIP_PBUF_H__ */
+#endif /* LWIP_HDR_PBUF_H */

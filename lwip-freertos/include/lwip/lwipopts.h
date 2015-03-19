@@ -42,6 +42,7 @@
 #define PPPOE_SUPPORT 0
 #define PAP_SUPPORT 0
 #define CHAP_SUPPORT 0
+#define LWIP_HAVE_SLIPIF                1
 
 #define LWIP_DEBUG
 #undef LWIP_DEBUG

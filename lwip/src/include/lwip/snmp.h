@@ -30,8 +30,8 @@
  * Author: Leon Woestenberg <leon.woestenberg@axon.tv>
  *
  */
-#ifndef __LWIP_SNMP_H__
-#define __LWIP_SNMP_H__
+#ifndef LWIP_HDR_SNMP_H
+#define LWIP_HDR_SNMP_H
 
 #include "lwip/opt.h"
 
@@ -97,10 +97,19 @@ struct snmp_obj_id
   s32_t id[LWIP_SNMP_OBJ_ID_LEN];
 };
 
+const char * snmp_get_community(void);
+void snmp_set_community(const char * const community);
+#if SNMP_COMMUNITY_EXT
+const char * snmp_get_community_write(void);
+const char * snmp_get_community_trap(void);
+void snmp_set_community_write(const char * const community);
+void snmp_set_community_trap(const char * const community);
+#endif /* SNMP_COMMUNITY_EXT */
+
 /* system */
-void snmp_set_sysdesr(u8_t* str, u8_t* len);
-void snmp_set_sysobjid(struct snmp_obj_id *oid);
-void snmp_get_sysobjid_ptr(struct snmp_obj_id **oid);
+void snmp_set_sysdescr(const u8_t* str, const u8_t* len);
+void snmp_set_sysobjid(const struct snmp_obj_id *oid);
+void snmp_get_sysobjid_ptr(const struct snmp_obj_id **oid);
 void snmp_inc_sysuptime(void);
 void snmp_add_sysuptime(u32_t value);
 void snmp_get_sysuptime(u32_t *value);
@@ -222,7 +231,7 @@ void snmp_inc_snmpoutgetnexts(void);
 void snmp_inc_snmpoutsetrequests(void);
 void snmp_inc_snmpoutgetresponses(void);
 void snmp_inc_snmpouttraps(void);
-void snmp_get_snmpgrpid_ptr(struct snmp_obj_id **oid);
+void snmp_get_snmpgrpid_ptr(const struct snmp_obj_id **oid);
 void snmp_set_snmpenableauthentraps(u8_t *value);
 void snmp_get_snmpenableauthentraps(u8_t *value);
 
@@ -231,7 +240,7 @@ void snmp_get_snmpenableauthentraps(u8_t *value);
 #else
 
 /* system */
-#define snmp_set_sysdesr(str, len)
+#define snmp_set_sysdescr(str, len)
 #define snmp_set_sysobjid(oid);
 #define snmp_get_sysobjid_ptr(oid)
 #define snmp_inc_sysuptime()
@@ -364,4 +373,4 @@ void snmp_get_snmpenableauthentraps(u8_t *value);
 }
 #endif
 
-#endif /* __LWIP_SNMP_H__ */
+#endif /* LWIP_HDR_SNMP_H */

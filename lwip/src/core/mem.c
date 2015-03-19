@@ -116,6 +116,11 @@ again:
   /* and return a pointer to the memory directly after the struct memp_malloc_helper */
   ret = (u8_t*)element + LWIP_MEM_ALIGN_SIZE(sizeof(struct memp_malloc_helper));
 
+#if MEMP_OVERFLOW_CHECK
+  /* initialize unused memory */
+  element->size = size;
+  memset((u8_t*)ret + size, 0xcd, memp_sizes[poolnr] - size);
+#endif /* MEMP_OVERFLOW_CHECK */
   return ret;
 }
 
@@ -141,6 +146,19 @@ mem_free(void *rmem)
   LWIP_ASSERT("hmem == MEM_ALIGN(hmem)", (hmem == LWIP_MEM_ALIGN(hmem)));
   LWIP_ASSERT("hmem->poolnr < MEMP_MAX", (hmem->poolnr < MEMP_MAX));
 
+#if MEMP_OVERFLOW_CHECK
+  {
+     u16_t i;
+     LWIP_ASSERT("MEM_USE_POOLS: invalid chunk size",
+        hmem->size <= memp_sizes[hmem->poolnr]);
+     /* check that unused memory remained untouched */
+     for (i = hmem->size; i < memp_sizes[hmem->poolnr]; i++) {
+        u8_t data = *((u8_t*)rmem + i);
+        LWIP_ASSERT("MEM_USE_POOLS: mem overflow detected", data == 0xcd);
+     }
+  }
+#endif /* MEMP_OVERFLOW_CHECK */
+
   /* and put it in the pool we saved earlier */
   memp_free(hmem->poolnr, hmem);
 }
@@ -151,7 +169,7 @@ mem_free(void *rmem)
 /**
  * The heap is made up as a list of structs of this type.
  * This does not have to be aligned since for getting its size,
- * we only use the macro SIZEOF_STRUCT_MEM, which automatically alignes.
+ * we only use the macro SIZEOF_STRUCT_MEM, which automatically aligns.
  */
 struct mem {
   /** index (-> ram[next]) of the next struct */
@@ -179,7 +197,7 @@ struct mem {
  * how that space is calculated). */
 #ifndef LWIP_RAM_HEAP_POINTER
 /** the heap. we need one struct mem at the end and some room for alignment */
-u8_t ram_heap[MEM_SIZE_ALIGNED + (2*SIZEOF_STRUCT_MEM) + MEM_ALIGNMENT];
+u8_t ram_heap[MEM_SIZE_ALIGNED + (2U*SIZEOF_STRUCT_MEM) + MEM_ALIGNMENT];
 #define LWIP_RAM_HEAP_POINTER ram_heap
 #endif /* LWIP_RAM_HEAP_POINTER */
 
@@ -579,7 +597,7 @@ mem_malloc(mem_size_t size)
           /* (a mem2 struct does no fit into the user data space of mem and mem->next will always
            * be used at this point: if not we have 2 unused structs in a row, plug_holes should have
            * take care of this).
-           * -> near fit or excact fit: do not split, no mem2 creation
+           * -> near fit or exact fit: do not split, no mem2 creation
            * also can't move mem->next directly behind mem, since mem->next
            * will always be used at this point!
            */
