@@ -83,6 +83,9 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+
+/* lwIP includes */
+#include "lwip/tcpip.h"
 /* }}} */
 
 /* {{{1 Defines */
@@ -253,18 +256,6 @@ static void serial_print(char *buf, int n)
   UART_OUTPUT("TUA\t%d %s\n", n, buf);
 }
 
-static __attribute__((unused)) void hyp_putchar(int c)
-{
-  asm volatile(
-      "mov r0, #8;"
-      "mov r1, %0;"
-      "hvc #0;"
-      : /* outputs */
-      : "r" (c) /* inputs */
-      : "r0", "r1" /* clobbered */
-      );
-}
-
 static void uartTask(void *pvParameters)
 {
   uint32_t c;
@@ -273,7 +264,6 @@ static void uartTask(void *pvParameters)
   while(pdTRUE) {
     if(pdTRUE == xTaskNotifyWait(0, 0, &c, pdMS_TO_TICKS(250))) {
       led_toggle();
-      //hyp_putchar(c);
       s[idx] = c;
       if('\r' == s[idx] || idx >= sizeof(s)-1) {
         serial_print(s, idx);
@@ -587,12 +577,14 @@ static void prvSetupHardware(void)
 /* }}} */
 
 /* {{{1 main */
+
 void inmate_main(void)
 {
   unsigned i;
 
   prvSetupHardware();
   uart_mutex = xSemaphoreCreateMutex();
+  tcpip_init(NULL, NULL);
 
   xTaskCreate( uartTask, /* The function that implements the task. */
       "uartstat", /* The text name assigned to the task - for debug only; not used by the kernel. */

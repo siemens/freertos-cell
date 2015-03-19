@@ -22,7 +22,7 @@ FREERTOS_OBJS = freertos/Source/queue.o \
 	freertos/Source/list.o \
 	freertos/Source/croutine.o \
 	freertos/Source/event_groups.o \
-	freertos/Source/portable/MemMang/heap_1.o \
+	freertos/Source/portable/MemMang/heap_4.o \
 	freertos/Source/portable/GCC/ARM_A7jailhouse/port.o \
 	freertos/Source/portable/GCC/ARM_A7jailhouse/gic-v2.o \
 	freertos/Source/portable/GCC/ARM_A7jailhouse/portASM.o \
