@@ -78,6 +78,7 @@
 #include "string.h"
 #include "serial.h"
 #include "printf-stdarg.h"
+#include "sio_ppp.h"
 
 /* Scheduler include files. */
 #include "FreeRTOS.h"
@@ -251,31 +252,18 @@ static int timer_init(unsigned beats_per_second)
 /* }}} */
 
 /* {{{1 UART handling */
-static void serial_print(char *buf, int n)
-{
-  buf[n] = 0;
-  UART_OUTPUT("TUA\t%d %s\n", n, buf);
-}
 
 static void uartTask(void *pvParameters)
 {
-  uint32_t c;
-  char s[80];
-  int idx = 0;
+  uint8_t s[80];
+  sio_timeout_set(ser_dev, 38);
   while(pdTRUE) {
-    if(pdTRUE == xTaskNotifyWait(0, 0, &c, pdMS_TO_TICKS(250))) {
+    int n = sio_read(ser_dev, s, sizeof(s)-1);
+    if(n > 0) {
+      s[n] = '\0';
+      sio_write(ser_dev, s, n);
       led_toggle();
-      s[idx] = c;
-      if('\r' == s[idx] || idx >= sizeof(s)-1) {
-        serial_print(s, idx);
-        idx = 0;
-      }
-      else
-        ++idx;
-    }
-    else if(idx) { /* Buffer not empty */
-      serial_print(s, idx);
-      idx = 0;
+      UART_OUTPUT("TUA: n=%d\n", n);
     }
   }
 }
