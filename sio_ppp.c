@@ -25,8 +25,9 @@ static void green_led_toggle(void)
 
 static QueueHandle_t ser_rx_queue;
 
-void sio_queue_register(QueueHandle_t qh)
+void sio_queue_register(sio_fd_t fd, QueueHandle_t qh)
 {
+  (void)fd;
   ser_rx_queue = qh;
 }
 

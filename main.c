@@ -625,7 +625,8 @@ void inmate_main(void)
   configASSERT(NULL != uart_mutex);
   ser_rx_queue = xQueueCreate(8*PPP_MRU, sizeof(uint8_t));
   configASSERT(NULL != ser_rx_queue);
-  sio_queue_register(ser_rx_queue);
+  sio_timeout_set(ser_dev, 3);
+  sio_queue_register(ser_dev, ser_rx_queue);
   /* initialise lwIP. This creates a new thread, tcpip_thread, that
    * communicates with the pppInputThread (see below) */
   tcpip_init(NULL, NULL);
