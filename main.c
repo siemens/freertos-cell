@@ -261,7 +261,7 @@ static void uartTask(void *pvParameters)
   static uint8_t s[PPP_MRU];
   sio_timeout_set(ser_dev, 40);
   while(pdTRUE) {
-    int n = sio_read(ser_dev, s, sizeof(s)-1);
+    int n = sio_tryread(ser_dev, s, sizeof(s)-1);
     if(n > 0) {
       s[n] = '\0';
       sio_write(ser_dev, s, n);
@@ -677,8 +677,8 @@ static void pppTask(void *pvParameters)
 {
   int connected = 0;
   struct netif nif;
-  err_t err = slipif_init(&nif);
-  configASSERT(ERR_OK == err);
+  //err_t err = slipif_init(&nif);
+  //configASSERT(ERR_OK == err);
   ppp_pcb *pd = pppos_create(&nif, ser_dev, status_cb, &connected);
   while(1) {
     if(pd) {
