@@ -105,7 +105,6 @@
 #define UART_UNLOCK xSemaphoreGive(uart_mutex)
 #define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); UART_UNLOCK;} } while(0)
 
-#define PPP_TEST_MODE 1
 /* }}} */
 
 /* {{{1 Prototypes */
@@ -256,17 +255,20 @@ static int timer_init(unsigned beats_per_second)
 
 /* {{{1 UART handling */
 
+static ppp_pcb *ppp_obj = NULL;
+
 static void uartTask(void *pvParameters)
 {
-  static uint8_t s[PPP_MRU];
-  sio_timeout_set(ser_dev, 40);
+  static uint8_t s[PPP_MRU+4];
+  sio_timeout_set(ser_dev, 130);
+  while(!ppp_obj) {
+    printf("%s: wating for ppp setup ...\n\r", __func__);
+    vTaskDelay(pdMS_TO_TICKS(200));
+  }
   while(pdTRUE) {
-    int n = sio_tryread(ser_dev, s, sizeof(s)-1);
-    if(n > 0) {
-      s[n] = '\0';
-      sio_write(ser_dev, s, n);
-      UART_OUTPUT("TUA: n=%d\n", n);
-    }
+    int n = sio_tryread(ser_dev, s, sizeof(s));
+    if(n > 0)
+      pppos_input_tcpip(ppp_obj, s, n);
   }
 }
 
@@ -570,7 +572,7 @@ static void prvSetupHardware(void)
 
 /* {{{1 PPP */
 
-static void status_cb(ppp_pcb *pcb, int err_code, void *ctx)
+static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 {
   struct netif *pppif = ppp_netif(pcb);
   LWIP_UNUSED_ARG(ctx);
@@ -580,7 +582,7 @@ static void status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 #if LWIP_DNS
                         ip_addr_t ns;
 #endif /* LWIP_DNS */
-                        printf("status_cb: Connected\n");
+                        printf("ppp_status_cb: Connected\n");
 #if PPP_IPV4_SUPPORT
                         printf("   our_ipaddr  = %s\n", ipaddr_ntoa(&pppif->ip_addr));
                         printf("   his_ipaddr  = %s\n", ipaddr_ntoa(&pppif->gw));
@@ -657,9 +659,11 @@ static void status_cb(ppp_pcb *pcb, int err_code, void *ctx)
    */
 
   if (err_code == PPPERR_NONE) {
+    *((int*)ctx) = 1;
     return;
   }
-
+  else
+    *((int*)ctx) = 0;
   /* ppp_close() was previously called, don't reconnect */
   if (err_code == PPPERR_USER) {
     /* ppp_free(); -- can be called here */
@@ -670,7 +674,7 @@ static void status_cb(ppp_pcb *pcb, int err_code, void *ctx)
    * Try to reconnect in 30 seconds, if you need a modem chatscript you have
    * to do a much better signaling here ;-)
    */
-  ppp_connect(pcb, 30);
+  ppp_connect(pcb, 2);
 }
 
 static int tcpip_done_flag = 0;
@@ -682,24 +686,25 @@ static void tcpip_init_done_cb(void *arg)
 
 static void pppTask(void *pvParameters)
 {
+  const char *username = "rtosuser";
+  const char *password = "rtospass";
   int connected = 0;
   struct netif nif;
   while(!tcpip_done_flag) {
     UART_OUTPUT("%s: TCP still not up ...\n", __func__);
     vTaskDelay(pdMS_TO_TICKS(500));
   }
-  //err_t err = slipif_init(&nif);
-  //configASSERT(ERR_OK == err);
-  ppp_pcb *pd = pppos_create(&nif, ser_dev, status_cb, &connected);
+  memset(&nif, 0, sizeof(nif));
+  ppp_obj = pppos_create(&nif, ser_dev, ppp_status_cb, &connected);
+  ppp_set_default(ppp_obj);
+  ppp_set_auth(ppp_obj, PPPAUTHTYPE_ANY, username, password);
+  ppp_connect(ppp_obj, 0);
   while(1) {
-    if(pd) {
-      const char *username = "rtosuser";
-      const char *password = "rtospass";
-      ppp_set_auth(pd, PPPAUTHTYPE_ANY, username, password);
+    if(ppp_obj) {
       // the thread was successfully started.
       while (!connected) {
         vTaskDelay(pdMS_TO_TICKS(1000));
-        UART_OUTPUT("PPP: pd=%p still not connected ...\n\r", pd);
+        UART_OUTPUT("PPP: pd=%p still not connected ...\n\r", ppp_obj);
       }
       /* Now we are connected */
       while(connected) {
@@ -732,11 +737,18 @@ void inmate_main(void)
    * communicates with the pppInputThread (see below) */
   tcpip_init(tcpip_init_done_cb, &tcpip_done_flag);
 
-  xTaskCreate( PPP_TEST_MODE ? pppTask : uartTask, /* The function that implements the task. */
+  xTaskCreate( pppTask, /* The function that implements the task. */
       "ppptask", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL,                                                            /* The parameter passed to the task */
       configMAX_PRIORITIES/2, /* The priority assigned to the task. */
+      NULL );
+
+  xTaskCreate( uartTask, /* The function that implements the task. */
+      "uartread", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      NULL,                                                            /* The parameter passed to the task */
+      tskIDLE_PRIORITY+1, /* The priority assigned to the task. */
       NULL );
 
   if(0) for(i = 0; i < 20; i++) {
@@ -765,7 +777,7 @@ void inmate_main(void)
         configMAX_PRIORITIES-1, /* The priority assigned to the task. */
         NULL );								    /* The task handle is not required, so NULL is passed. */
   }
-  xTaskCreate( blinkTask, /* The function that implements the task. */
+  if(0) xTaskCreate( blinkTask, /* The function that implements the task. */
       "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL, 								/* The parameter passed to the task */
