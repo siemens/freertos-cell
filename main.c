@@ -673,10 +673,21 @@ static void status_cb(ppp_pcb *pcb, int err_code, void *ctx)
   ppp_connect(pcb, 30);
 }
 
+static int tcpip_done_flag = 0;
+
+static void tcpip_init_done_cb(void *arg)
+{
+  *((int*)arg) = 1;
+}
+
 static void pppTask(void *pvParameters)
 {
   int connected = 0;
   struct netif nif;
+  while(!tcpip_done_flag) {
+    UART_OUTPUT("%s: TCP still not up ...\n", __func__);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
   //err_t err = slipif_init(&nif);
   //configASSERT(ERR_OK == err);
   ppp_pcb *pd = pppos_create(&nif, ser_dev, status_cb, &connected);
@@ -719,7 +730,7 @@ void inmate_main(void)
   sio_queue_register(ser_dev, ser_rx_queue);
   /* initialise lwIP. This creates a new thread, tcpip_thread, that
    * communicates with the pppInputThread (see below) */
-  tcpip_init(NULL, NULL);
+  tcpip_init(tcpip_init_done_cb, &tcpip_done_flag);
 
   xTaskCreate( PPP_TEST_MODE ? pppTask : uartTask, /* The function that implements the task. */
       "ppptask", /* The text name assigned to the task - for debug only; not used by the kernel. */
