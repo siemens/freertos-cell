@@ -135,9 +135,11 @@ int ppp_slprintf(char *buf, int buflen, const char *fmt, ...) {
 #define OUTCHAR(c)	(buflen > 0? (--buflen, *buf++ = (c)): 0)
 
 int ppp_vslprintf(char *buf, int buflen, const char *fmt, va_list args) {
-#if 1
   return snprintf(buf, buflen, fmt, args);
-#else
+}
+
+#if 0
+int ppp_vslprintf(char *buf, int buflen, const char *fmt, va_list args) {
     int c, i, n;
     int width, prec, fillch;
     int base, len, neg, quoted;
@@ -402,8 +404,8 @@ int ppp_vslprintf(char *buf, int buflen, const char *fmt, va_list args) {
     }
     *buf = 0;
     return buf - buf0;
-#endif
 }
+#endif
 
 #if PRINTPKT_SUPPORT
 /*

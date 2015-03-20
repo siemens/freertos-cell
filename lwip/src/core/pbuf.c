@@ -1153,7 +1153,6 @@ pbuf_coalesce(struct pbuf *p, pbuf_layer layer)
 {
   struct pbuf *q;
   err_t err;
-  (void)err;
   if (p->next == NULL) {
     return p;
   }
