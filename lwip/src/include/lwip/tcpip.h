@@ -81,7 +81,7 @@ extern sys_mutex_t lock_tcpip_core;
   TCPIP_APIMSG_NOERR(m,f); \
   (e) = (m)->msg.err; \
 } while(0)
-#define TCPIP_APIMSG_ACK(m)
+#define TCPIP_APIMSG_ACK(m)   NETCONN_SET_SAFE_ERR((m)->conn, (m)->err)
 #define TCPIP_NETIFAPI(m)     tcpip_netifapi_lock(m)
 #define TCPIP_NETIFAPI_ACK(m)
 #define TCPIP_PPPAPI(m)       tcpip_pppapi_lock(m)
@@ -91,7 +91,7 @@ extern sys_mutex_t lock_tcpip_core;
 #define UNLOCK_TCPIP_CORE()
 #define TCPIP_APIMSG_NOERR(m,f) do { (m)->function = f; tcpip_apimsg(m); } while(0)
 #define TCPIP_APIMSG(m,f,e)   do { (m)->function = f; (e) = tcpip_apimsg(m); } while(0)
-#define TCPIP_APIMSG_ACK(m)   sys_sem_signal(LWIP_API_MSG_SEM(m))
+#define TCPIP_APIMSG_ACK(m)   do { NETCONN_SET_SAFE_ERR((m)->conn, (m)->err); sys_sem_signal(LWIP_API_MSG_SEM(m)); } while(0)
 #define TCPIP_NETIFAPI(m)     tcpip_netifapi(m)
 #define TCPIP_NETIFAPI_ACK(m) sys_sem_signal(&m->sem)
 #define TCPIP_PPPAPI(m)       tcpip_pppapi(m)
@@ -143,6 +143,10 @@ err_t tcpip_apimsg(struct api_msg *apimsg);
 
 err_t tcpip_input(struct pbuf *p, struct netif *inp);
 
+#if PPPOS_SUPPORT && !PPP_INPROC_IRQ_SAFE
+err_t tcpip_pppos_input(struct pbuf *p, struct netif *inp);
+#endif /* PPPOS_SUPPORT && !PPP_INPROC_IRQ_SAFE */
+
 #if LWIP_NETIF_API
 err_t tcpip_netifapi(struct netifapi_msg *netifapimsg);
 #if LWIP_TCPIP_CORE_LOCKING
@@ -178,6 +182,9 @@ enum tcpip_msg_type {
   TCPIP_MSG_API,
 #endif /* LWIP_NETCONN || LWIP_SOCKET */
   TCPIP_MSG_INPKT,
+#if PPPOS_SUPPORT && !PPP_INPROC_IRQ_SAFE
+  TCPIP_MSG_INPKT_PPPOS,
+#endif /* PPPOS_SUPPORT && !PPP_INPROC_IRQ_SAFE */
 #if LWIP_NETIF_API
   TCPIP_MSG_NETIFAPI,
 #endif /* LWIP_NETIF_API */

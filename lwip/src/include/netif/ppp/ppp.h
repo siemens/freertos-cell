@@ -85,6 +85,10 @@
 #define PPP_STATS_SUPPORT   0
 #endif
 
+#ifndef MPPE_SUPPORT
+#define MPPE_SUPPORT        0
+#endif
+
 
 /*************************
 *** PUBLIC DEFINITIONS ***
@@ -153,6 +157,9 @@ typedef unsigned char  u_char;
 
 #include "fsm.h"
 #include "lcp.h"
+#if CCP_SUPPORT
+#include "ccp.h"
+#endif /* CCP_SUPPORT */
 #if PPP_IPV4_SUPPORT
 #include "ipcp.h"
 #endif /* PPP_IPV4_SUPPORT */
@@ -181,57 +188,61 @@ typedef void (*ppp_link_status_cb_fn)(ppp_pcb *pcb, int err_code, void *ctx);
 typedef struct ppp_settings_s {
 
 #if PPP_SERVER && PPP_AUTH_SUPPORT
-  unsigned int  auth_required      :1;       /* Peer is required to authenticate */
-  unsigned int  null_login         :1;       /* Username of "" and a password of "" are acceptable */
+  unsigned int  auth_required       :1;      /* Peer is required to authenticate */
+  unsigned int  null_login          :1;      /* Username of "" and a password of "" are acceptable */
 #else
-  unsigned int                     :2;       /* 2 bits of padding */
+  unsigned int                      :2;      /* 2 bits of padding */
 #endif /* PPP_SERVER && PPP_AUTH_SUPPORT */
 #if PPP_REMOTENAME
-  unsigned int  explicit_remote    :1;       /* remote_name specified with remotename opt */
+  unsigned int  explicit_remote     :1;      /* remote_name specified with remotename opt */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif /* PPP_REMOTENAME */
 #if PAP_SUPPORT
-  unsigned int  refuse_pap         :1;       /* Don't proceed auth. with PAP */
+  unsigned int  refuse_pap          :1;      /* Don't proceed auth. with PAP */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif /* PAP_SUPPORT */
 #if CHAP_SUPPORT
-  unsigned int  refuse_chap        :1;       /* Don't proceed auth. with CHAP */
+  unsigned int  refuse_chap         :1;      /* Don't proceed auth. with CHAP */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif /* CHAP_SUPPORT */
 #if MSCHAP_SUPPORT
-  unsigned int  refuse_mschap      :1;       /* Don't proceed auth. with MS-CHAP */
-  unsigned int  refuse_mschap_v2   :1;       /* Don't proceed auth. with MS-CHAPv2 */
+  unsigned int  refuse_mschap       :1;      /* Don't proceed auth. with MS-CHAP */
+  unsigned int  refuse_mschap_v2    :1;      /* Don't proceed auth. with MS-CHAPv2 */
 #else
-  unsigned int                     :2;       /* 2 bits of padding */
+  unsigned int                      :2;      /* 2 bits of padding */
 #endif /* MSCHAP_SUPPORT */
 #if EAP_SUPPORT
-  unsigned int  refuse_eap         :1;       /* Don't proceed auth. with EAP */
+  unsigned int  refuse_eap          :1;      /* Don't proceed auth. with EAP */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif /* EAP_SUPPORT */
 #if LWIP_DNS
-  unsigned int  usepeerdns         :1;       /* Ask peer for DNS adds */
+  unsigned int  usepeerdns          :1;      /* Ask peer for DNS adds */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif /* LWIP_DNS */
-  unsigned int  persist            :1;       /* Persist mode, always try to open the connection */
+  unsigned int  persist             :1;      /* Persist mode, always try to open the connection */
 #if PRINTPKT_SUPPORT
-  unsigned int  hide_password      :1;       /* Hide password in dumped packets */
+  unsigned int  hide_password       :1;      /* Hide password in dumped packets */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif /* PRINTPKT_SUPPORT */
-  unsigned int  noremoteip         :1;       /* Let him have no IP address */
-  unsigned int  lax_recv           :1;       /* accept control chars in asyncmap */
-  unsigned int  noendpoint         :1;       /* don't send/accept endpoint discriminator */
+  unsigned int  noremoteip          :1;      /* Let him have no IP address */
+  unsigned int  lax_recv            :1;      /* accept control chars in asyncmap */
+  unsigned int  noendpoint          :1;      /* don't send/accept endpoint discriminator */
 #if PPP_LCP_ADAPTIVE
-  unsigned int lcp_echo_adaptive   :1;       /* request echo only if the link was idle */
+  unsigned int lcp_echo_adaptive    :1;      /* request echo only if the link was idle */
 #else
-  unsigned int                     :1;       /* 1 bit of padding */
+  unsigned int                      :1;      /* 1 bit of padding */
 #endif
-  unsigned int                     :1;       /* 1 bit of padding to round out to 16 bits */
+#if MPPE_SUPPORT
+  unsigned int refuse_mppe_stateful :1;      /* Allow MPPE stateful mode? */
+#else /* MPPE_SUPPORT */
+  unsigned int                      :1;      /* 1 bit of padding */
+#endif /* MPPE_SUPPORT */
 
   u16_t  listen_time;                 /* time to listen first (ms), waiting for peer to send LCP packet */
 
@@ -347,14 +358,13 @@ struct ppp_pcb_s {
   unsigned int lcp_echo_timer_running  :1; /* set if a timer is running */
   unsigned int                         :2; /* 2 bits of padding to round out to 8 bits */
 
+#if PPP_AUTH_SUPPORT
   /* auth data */
 #if PPP_SERVER
   char peer_authname[MAXNAMELEN + 1]; /* The name by which the peer authenticated itself to us. */
 #endif /* PPP_SERVER */
   u16_t auth_pending;        /* Records which authentication operations haven't completed yet. */
   u16_t auth_done;           /* Records which authentication operations have been completed. */
-  u8_t num_np_open;          /* Number of network protocols which we have opened. */
-  u8_t num_np_up;            /* Number of network protocols which have come up. */
 
 #if PAP_SUPPORT
   upap_state upap;           /* PAP data */
@@ -370,15 +380,29 @@ struct ppp_pcb_s {
 #if EAP_SUPPORT
   eap_state eap;            /* EAP data */
 #endif /* EAP_SUPPORT */
+#endif /* PPP_AUTH_SUPPORT */
 
   fsm lcp_fsm;                   /* LCP fsm structure */
   lcp_options lcp_wantoptions;   /* Options that we want to request */
   lcp_options lcp_gotoptions;    /* Options that peer ack'd */
   lcp_options lcp_allowoptions;  /* Options we allow peer to request */
   lcp_options lcp_hisoptions;    /* Options that we ack'd */
+  u16_t peer_mru;                /* currently negotiated peer MRU */
   u8_t lcp_echos_pending;        /* Number of outstanding echo msgs */
   u8_t lcp_echo_number;          /* ID number of next echo frame */
-  u16_t peer_mru;                /* currently negotiated peer MRU */
+
+  u8_t num_np_open;              /* Number of network protocols which we have opened. */
+  u8_t num_np_up;                /* Number of network protocols which have come up. */
+
+#if CCP_SUPPORT
+  fsm ccp_fsm;                   /* CCP fsm structure */
+  ccp_options ccp_wantoptions;   /* what to request the peer to use */
+  ccp_options ccp_gotoptions;    /* what the peer agreed to do */
+  ccp_options ccp_allowoptions;  /* what we'll agree to do */
+  ccp_options ccp_hisoptions;    /* what we agreed to do */
+  int ccp_localstate;            /* Local state (mainly for handling reset-reqs and reset-acks). */
+  int all_rejected;              /* we rejected all peer's options */
+#endif /* CCP_SUPPORT */
 
 #if PPP_IPV4_SUPPORT
   fsm ipcp_fsm;                   /* IPCP fsm structure */

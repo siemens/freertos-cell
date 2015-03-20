@@ -70,12 +70,13 @@
 #define MS_CHAP2_NTRESP_LEN	24
 #define MS_CHAP2_FLAGS		48
 
-#ifdef MPPE
+#if MPPE_SUPPORT
 #include "mppe.h"	/* MPPE_MAX_KEY_LEN */
 extern u_char mppe_send_key[MPPE_MAX_KEY_LEN];
 extern u_char mppe_recv_key[MPPE_MAX_KEY_LEN];
 extern int mppe_keys_set;
 
+#if 0 /* UNUSED */
 /* These values are the RADIUS attribute values--see RFC 2548. */
 #define MPPE_ENC_POL_ENC_ALLOWED 1
 #define MPPE_ENC_POL_ENC_REQUIRED 2
@@ -84,7 +85,8 @@ extern int mppe_keys_set;
 
 /* used by plugins (using above values) */
 extern void set_mppe_enc_types(int, int);
-#endif
+#endif /* UNUSED */
+#endif /* MPPE_SUPPORT */
 
 /* Are we the authenticator or authenticatee?  For MS-CHAPv2 key derivation. */
 #define MS_CHAP2_AUTHENTICATEE 0
@@ -93,11 +95,11 @@ extern void set_mppe_enc_types(int, int);
 void ChapMS (u_char *, char *, int, u_char *);
 void ChapMS2 (u_char *, u_char *, char *, char *, int,
 		  u_char *, u_char[MS_AUTH_RESPONSE_LENGTH+1], int);
-#ifdef MPPE
+#if MPPE_SUPPORT
 void mppe_set_keys (u_char *, u_char[MD4_SIGNATURE_SIZE]);
 void mppe_set_keys2(u_char PasswordHashHash[MD4_SIGNATURE_SIZE],
 		    u_char NTResponse[24], int IsServer);
-#endif
+#endif /* MPPE_SUPPORT */
 
 void	ChallengeHash (u_char[16], u_char *, char *, u_char[8]);
 
