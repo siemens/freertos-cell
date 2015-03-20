@@ -553,6 +553,7 @@ StackType_t *pxTopOfStack;
 	configASSERT( pxTaskCode );
 	configASSERT( ( ( uxPriority & ( ~portPRIVILEGE_BIT ) ) < configMAX_PRIORITIES ) );
 
+  printf("%s: %s\n\r", __func__, pcName);
 	/* Allocate the memory required by the TCB and stack for the new task,
 	checking that the allocation was successful. */
 	pxNewTCB = prvAllocateTCBAndStack( usStackDepth, puxStackBuffer );
