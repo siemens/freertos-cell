@@ -259,8 +259,8 @@ static ppp_pcb *ppp_obj = NULL;
 
 static void uartTask(void *pvParameters)
 {
-  static uint8_t s[PPP_MRU+4];
-  sio_timeout_set(ser_dev, 130);
+  static uint8_t s[LWIP_MEM_ALIGN_SIZE(2*PPP_MRU)];
+  sio_timeout_set(ser_dev, 10);
   while(!ppp_obj) {
     printf("%s: wating for ppp setup ...\n\r", __func__);
     vTaskDelay(pdMS_TO_TICKS(200));
