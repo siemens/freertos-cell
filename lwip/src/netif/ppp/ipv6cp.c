@@ -1396,7 +1396,9 @@ static int ipv6cp_printpkt(u_char *p, int plen,
 		void (*printer)(void *, const char *, ...), void *arg) {
     int code, id, len, olen;
     u_char *pstart, *optend;
+#ifdef IPV6CP_COMP
     u_short cishort;
+#endif /* IPV6CP_COMP */
     eui64_t ifaceid;
 
     if (plen < HEADERLEN)
@@ -1431,6 +1433,7 @@ static int ipv6cp_printpkt(u_char *p, int plen,
 	    len -= olen;
 	    optend = p + olen;
 	    switch (code) {
+#ifdef IPV6CP_COMP
 	    case CI_COMPRESSTYPE:
 		if (olen >= CILEN_COMPRESS) {
 		    p += 2;
@@ -1439,6 +1442,7 @@ static int ipv6cp_printpkt(u_char *p, int plen,
 		    printer(arg, "0x%x", cishort);
 		}
 		break;
+#endif /* IPV6CP_COMP */
 	    case CI_IFACEID:
 		if (olen == CILEN_IFACEID) {
 		    p += 2;

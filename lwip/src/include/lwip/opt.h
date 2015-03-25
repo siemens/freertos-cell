@@ -563,6 +563,13 @@
 #define ETHARP_SUPPORT_STATIC_ENTRIES   0
 #endif
 
+/** ETHARP_TABLE_MATCH_NETIF==1: Match netif for ARP table entries.
+ * If disabled, duplicate IP address on multiple netifs are not supported
+ * (but this should only occur for AutoIP).
+ */
+#ifndef ETHARP_TABLE_MATCH_NETIF
+#define ETHARP_TABLE_MATCH_NETIF        0
+#endif
 
 /*
    --------------------------------
@@ -1368,7 +1375,9 @@
    ------------------------------------
 */
 /**
- * LWIP_HAVE_LOOPIF==1: Support loop interface (127.0.0.1)
+ * LWIP_HAVE_LOOPIF==1: Support loop interface (127.0.0.1).
+ * This is only needed when no real netifs are available. If at least one other
+ * netif is available, loopback traffic uses this netif.
  */
 #ifndef LWIP_HAVE_LOOPIF
 #define LWIP_HAVE_LOOPIF                0
@@ -2604,6 +2613,27 @@
  * LWIP_HOOK_IP4_ROUTE(). The actual routing/gateway table implementation is
  * not part of lwIP but can e.g. be hidden in the netif's state argument.
 */
+
+/**
+ * LWIP_HOOK_IP6_INPUT(pbuf, input_netif):
+ * - called from ip6_input() (IPv6)
+ * - pbuf: received struct pbuf passed to ip6_input()
+ * - input_netif: struct netif on which the packet has been received
+ * Return values:
+ * - 0: Hook has not consumed the packet, packet is processed as normal
+ * - != 0: Hook has consumed the packet.
+ * If the hook consumed the packet, 'pbuf' is in the responsibility of the hook
+ * (i.e. free it when done).
+ */
+
+/**
+ * LWIP_HOOK_IP6_ROUTE(src, dest):
+ * - called from ip6_route() (IPv6)
+ * - src: sourc IPv6 address
+ * - dest: destination IPv6 address
+ * Returns the destination netif or NULL if no destination netif is found. In
+ * that case, ip6_route() continues as normal.
+ */
 
 /**
  * LWIP_HOOK_VLAN_CHECK(netif, eth_hdr, vlan_hdr):

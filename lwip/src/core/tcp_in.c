@@ -360,17 +360,6 @@ tcp_input(struct pbuf *p, struct netif *inp)
         TCP_EVENT_ERR(pcb->errf, pcb->callback_arg, ERR_RST);
         tcp_pcb_remove(&tcp_active_pcbs, pcb);
         memp_free(MEMP_TCP_PCB, pcb);
-      } else if (recv_flags & TF_CLOSED) {
-        /* The connection has been closed and we will deallocate the
-           PCB. */
-        if (!(pcb->flags & TF_RXCLOSED)) {
-          /* Connection closed although the application has only shut down the
-             tx side: call the PCB's err callback and indicate the closure to
-             ensure the application doesn't continue using the PCB. */
-          TCP_EVENT_ERR(pcb->errf, pcb->callback_arg, ERR_CLSD);
-        }
-        tcp_pcb_remove(&tcp_active_pcbs, pcb);
-        memp_free(MEMP_TCP_PCB, pcb);
       } else {
         err = ERR_OK;
         /* If the application has registered a "sent" function to be
@@ -395,7 +384,19 @@ tcp_input(struct pbuf *p, struct netif *inp)
             }
           }
         }
-
+        if (recv_flags & TF_CLOSED) {
+          /* The connection has been closed and we will deallocate the
+             PCB. */
+          if (!(pcb->flags & TF_RXCLOSED)) {
+            /* Connection closed although the application has only shut down the
+               tx side: call the PCB's err callback and indicate the closure to
+               ensure the application doesn't continue using the PCB. */
+            TCP_EVENT_ERR(pcb->errf, pcb->callback_arg, ERR_CLSD);
+          }
+          tcp_pcb_remove(&tcp_active_pcbs, pcb);
+          memp_free(MEMP_TCP_PCB, pcb);
+          goto aborted;
+        }
 #if TCP_QUEUE_OOSEQ && LWIP_WND_SCALE
         while (recv_data != NULL) {
           struct pbuf *rest = NULL;
@@ -930,7 +931,7 @@ tcp_oos_insert_segment(struct tcp_seg *cseg, struct tcp_seg *next)
 
 /**
  * Called by tcp_process. Checks if the given segment is an ACK for outstanding
- * data, and if so frees the memory of the buffered data. Next, is places the
+ * data, and if so frees the memory of the buffered data. Next, it places the
  * segment on any of the receive queues (pcb->recved or pcb->ooseq). If the segment
  * is buffered, the pbuf is referenced by pbuf_ref so that it will not be freed until
  * it has been removed from the buffer.
@@ -1764,6 +1765,12 @@ tcp_parseopt(struct tcp_pcb *pcb)
       }
     }
   }
+}
+
+void
+tcp_trigger_input_pcb_close(void)
+{
+  recv_flags |= TF_CLOSED;
 }
 
 #endif /* LWIP_TCP */
