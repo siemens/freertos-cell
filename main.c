@@ -259,8 +259,8 @@ static ppp_pcb *ppp_obj = NULL;
 
 static void uartTask(void *pvParameters)
 {
-  static uint8_t s[PPP_MRU+4];
-  sio_timeout_set(ser_dev, 130);
+  static uint8_t s[2*PPP_MRU+4];
+  sio_timeout_set(ser_dev, 3);
   while(!ppp_obj) {
     printf("%s: wating for ppp setup ...\n\r", __func__);
     vTaskDelay(pdMS_TO_TICKS(200));
@@ -684,6 +684,62 @@ static void tcpip_init_done_cb(void *arg)
   *((int*)arg) = 1;
 }
 
+static void echoTask(void *pvParameters)
+{
+  struct netconn *conn = netconn_new_with_callback(NETCONN_TCP, NULL);
+  if(!conn) {
+    printf("netconn_new_with_callback failed\n");
+    ARM_SLEEP;
+  }
+  if(SO_REUSE)
+    ip_set_option(conn->pcb.tcp, SOF_REUSEADDR);
+
+  while(!tcpip_done_flag) {
+    UART_OUTPUT("%s: TCP still not up ...\n", __func__);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+  puts("S1\n\r");
+  /* Bind connection to well known port number TCP_CAM_PORT. */
+  if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 32000)) {
+    printf("ERROR: netconn_bind: %d\n", netconn_err(conn));
+    ARM_SLEEP;
+  }
+  puts("S2\n\r");
+
+  /* Tell connection to go into listening mode. */
+  if(ERR_OK != netconn_listen(conn)) {
+    printf("ERROR: %s netconn_listen: %d\n", __func__, netconn_err(conn));
+    ARM_SLEEP;
+  }
+  puts("S3\n\r");
+
+  while(1) {
+    struct netconn *newconn;
+    puts("Service online ...\n\r");
+    /* Grab new connection. */
+    if(ERR_OK == netconn_accept(conn, &newconn)) {
+      static char connected_to_info[32] = "null";
+      ip_addr_t peer_addr;
+      u16_t peer_port;
+
+      puts("New client\n\r");
+      netconn_peer(newconn, &peer_addr, &peer_port);
+      snprintf(connected_to_info, sizeof(connected_to_info), "\"%u.%u.%u.%u:%u\"", ip4_addr1(&peer_addr), ip4_addr2(&peer_addr), ip4_addr3(&peer_addr), ip4_addr4(&peer_addr), peer_port);
+      printf("%s: C[%s] <=========> S\n", __func__, connected_to_info);
+      while(1) {
+        printf("Server present\n\r");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+      }
+      puts("S END\n\r");
+      netconn_close(conn);
+      if(ERR_OK != netconn_delete(conn))
+        printf("netconn_delete failed\n\r");
+    }
+    else 
+      vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+}
+
 static void pppTask(void *pvParameters)
 {
   const char *username = "rtosuser";
@@ -708,8 +764,8 @@ static void pppTask(void *pvParameters)
       }
       /* Now we are connected */
       while(connected) {
-        vTaskDelay(pdMS_TO_TICKS(500));
         UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
+        vTaskDelay(pdMS_TO_TICKS(1000));
       }
     }
     else {
@@ -736,6 +792,13 @@ void inmate_main(void)
   /* initialise lwIP. This creates a new thread, tcpip_thread, that
    * communicates with the pppInputThread (see below) */
   tcpip_init(tcpip_init_done_cb, &tcpip_done_flag);
+
+  xTaskCreate( echoTask, /* The function that implements the task. */
+      "echod", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      NULL,                                                            /* The parameter passed to the task */
+      configMAX_PRIORITIES/2, /* The priority assigned to the task. */
+      NULL );
 
   xTaskCreate( pppTask, /* The function that implements the task. */
       "ppptask", /* The text name assigned to the task - for debug only; not used by the kernel. */
