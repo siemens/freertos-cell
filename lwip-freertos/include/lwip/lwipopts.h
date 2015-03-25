@@ -43,6 +43,7 @@
 #define PAP_SUPPORT 0
 #define CHAP_SUPPORT 0
 
+#define IP_DEBUG 1
 #define LWIP_DEBUG
 #undef LWIP_DEBUG
 #ifdef LWIP_DEBUG
