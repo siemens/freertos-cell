@@ -721,15 +721,35 @@ static void echoTask(void *pvParameters)
       static char connected_to_info[32] = "null";
       ip_addr_t peer_addr;
       u16_t peer_port;
+      err_t err = ERR_OK;
 
       puts("New client\n\r");
       netconn_peer(newconn, &peer_addr, &peer_port);
       snprintf(connected_to_info, sizeof(connected_to_info), "\"%u.%u.%u.%u:%u\"", ip4_addr1(&peer_addr), ip4_addr2(&peer_addr), ip4_addr3(&peer_addr), ip4_addr4(&peer_addr), peer_port);
       printf("%s: C[%s] <=========> S\n", __func__, connected_to_info);
-      while(1) {
-        printf("Server present\n\r");
-        vTaskDelay(pdMS_TO_TICKS(1000));
-      }
+      // Do not block endless in the receive function
+      netconn_set_recvtimeout(conn, 2000);
+      // Switch off the nagle algorithm
+      tcp_nagle_disable(conn->pcb.tcp);
+      printf("Server present\n\r");
+      do {
+        while(1) {
+          /* Is data available on the receive queue */
+          struct netbuf *buf;
+          if (ERR_OK == netconn_recv(conn, &buf)) {
+            do {
+              void *data;
+              u16_t len;
+              netbuf_data(buf, &data, &len);
+              printf("DATA: %p l=%u\n\r", data, (unsigned)len);
+            } while(netbuf_next(buf) >= 0);
+            netbuf_delete(buf);
+          }
+          else
+            break;
+        }
+        err = netconn_err(conn);
+      } while(!ERR_IS_FATAL(err));
       puts("S END\n\r");
       netconn_close(conn);
       if(ERR_OK != netconn_delete(conn))
