@@ -204,6 +204,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
   prev = NULL;
 
   
+    printf("TTTTTTTTTTTTTD %p\n\r", tcp_active_pcbs);
   for(pcb = tcp_active_pcbs; pcb != NULL; pcb = pcb->next) {
     LWIP_ASSERT("tcp_input: active pcb->state != CLOSED", pcb->state != CLOSED);
     LWIP_ASSERT("tcp_input: active pcb->state != TIME-WAIT", pcb->state != TIME_WAIT);
@@ -228,6 +229,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
     prev = pcb;
   }
 
+    printf("DDDDDDDDDDDDDD %p\n\r", pcb);
   if (pcb == NULL) {
     /* If it did not go to an active connection, we check the connections
        in the TIME-WAIT state. */
@@ -251,6 +253,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
     /* Finally, if we still did not get a match, we check all PCBs that
        are LISTENing for incoming connections. */
     prev = NULL;
+    printf("LLLLLL %p\n\r", tcp_listen_pcbs.listen_pcbs);
     for(lpcb = tcp_listen_pcbs.listen_pcbs; lpcb != NULL; lpcb = lpcb->next) {
       if (lpcb->local_port == tcphdr->dest) {
 #if LWIP_IPV6
@@ -349,6 +352,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
     }
     tcp_input_pcb = pcb;
     err = tcp_process(pcb);
+    printf("TCP ERR %d\n\r", err);
     /* A return value of ERR_ABRT means that tcp_abort() was called
        and that the pcb has been freed. If so, we don't do anything. */
     if (err != ERR_ABRT) {
