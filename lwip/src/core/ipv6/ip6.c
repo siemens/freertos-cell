@@ -78,10 +78,17 @@
  * @return the netif on which to send to reach dest
  */
 struct netif *
-ip6_route(const struct ip6_addr *src, const struct ip6_addr *dest)
+ip6_route(const ip6_addr_t *src, const ip6_addr_t *dest)
 {
   struct netif *netif;
   s8_t i;
+
+#ifdef LWIP_HOOK_IP6_ROUTE
+  netif = LWIP_HOOK_IP6_ROUTE(src, dest);
+  if (netif != NULL) {
+    return netif;
+  }
+#endif
 
   /* If single netif configuration, fast return. */
   if ((netif_list != NULL) && (netif_list->next == NULL)) {
@@ -160,6 +167,23 @@ ip6_route(const struct ip6_addr *src, const struct ip6_addr *dest)
       }
     }
   }
+
+#if LWIP_NETIF_LOOPBACK && !LWIP_HAVE_LOOPIF
+  /* loopif is disabled, loopback traffic is passed through any netif */
+  if (ip6_addr_isloopback(dest)) {
+    /* don't check for link on loopback traffic */
+    if (netif_is_up(netif_default)) {
+      return netif_default;
+    }
+    /* default netif is not up, just use any netif for loopback traffic */
+    for (netif = netif_list; netif != NULL; netif = netif->next) {
+      if (netif_is_up(netif)) {
+        return netif;
+      }
+    }
+    return NULL;
+  }
+#endif /* LWIP_NETIF_LOOPBACK && !LWIP_HAVE_LOOPIF */
 
   /* no matching netif found, use default netif, if up */
   if (!netif_is_up(netif_default) || !netif_is_link_up(netif_default)) {
@@ -387,6 +411,13 @@ ip6_input(struct pbuf *p, struct netif *inp)
     IP6_STATS_INC(ip6.drop);
     return ERR_OK;
   }
+
+#ifdef LWIP_HOOK_IP6_INPUT
+  if (LWIP_HOOK_IP6_INPUT(p, inp)) {
+    /* the packet has been eaten */
+    return ERR_OK;
+  }
+#endif
 
   /* header length exceeds first pbuf length, or ip length exceeds total pbuf length? */
   if ((IP6_HLEN > p->len) || ((IP6H_PLEN(ip6hdr) + IP6_HLEN) > p->tot_len)) {
@@ -841,6 +872,11 @@ ip6_output_if_src(struct pbuf *p, const ip6_addr_t *src, const ip6_addr_t *dest,
 #if ENABLE_LOOPBACK
   {
     int i;
+#if !LWIP_HAVE_LOOPIF
+    if (ip6_addr_isloopback(dest)) {
+      return netif_loop_output(netif, p);
+    }
+#endif /* !LWIP_HAVE_LOOPIF */
     for (i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
       if (ip6_addr_isvalid(netif_ip6_addr_state(netif, i)) &&
           ip6_addr_cmp(dest, netif_ip6_addr(netif, i))) {
@@ -881,7 +917,7 @@ ip6_output_if_src(struct pbuf *p, const ip6_addr_t *src, const ip6_addr_t *dest,
  *         see ip_output_if() for more return values
  */
 err_t
-ip6_output(struct pbuf *p, ip6_addr_t *src, ip6_addr_t *dest,
+ip6_output(struct pbuf *p, const ip6_addr_t *src, const ip6_addr_t *dest,
           u8_t hl, u8_t tc, u8_t nexth)
 {
   struct netif *netif;
