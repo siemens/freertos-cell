@@ -36,7 +36,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include "cpu.h"
-//#include "system.h"
 
 //#define LWIP_PROVIDE_ERRNO 1
 //#include "lwip_errno.h"
@@ -64,10 +63,10 @@ typedef int sys_prot_t;
 // Platform specific diagnostic output
 
 // non-fatal, print a message.
-#if LWIP_DEBUG || LWIP_STATS
+#ifdef LWIP_DEBUG
 #define U16_F "u"
-#define U32_F "lu"
-#define LWIP_PLATFORM_DIAG( x, ... ) do{ printf x; } while( 0 )
+#define U32_F "u"
+#define LWIP_PLATFORM_DIAG(x)   do { printf x; puts("\r"); }while(0)
 #else
 #define LWIP_PLATFORM_DIAG(x)
 #endif
@@ -76,9 +75,6 @@ typedef int sys_prot_t;
 #define LWIP_PLATFORM_ASSERT(x)
 //#define LWIP_PLATFORM_ASSERT(x, ...) do{ printf(x);}while(0)
 
-//#define LWIP_CHKSUM linux_do_csum
-u16_t linux_do_csum(const unsigned char *buff, int len);
-u16_t lwip_nios_custom_instruction_chksum(void *dataptr, int len);
 #define LWIP_CHKSUM_ALGORITHM 3
 
 #endif /* __CC_H__ */

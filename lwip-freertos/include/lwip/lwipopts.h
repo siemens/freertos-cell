@@ -43,14 +43,14 @@
 #define PAP_SUPPORT 0
 #define CHAP_SUPPORT 0
 
-#define IP_DEBUG 1
+//#define IP_DEBUG 1
 #define LWIP_DEBUG
 #undef LWIP_DEBUG
 #ifdef LWIP_DEBUG
-#define X32_F "%x"
-#define X16_F "%x"
-#define S32_F "%d"
-#define S16_F "%d"
+#define X32_F "x"
+#define X16_F "x"
+#define S32_F "d"
+#define S16_F "d"
 // Switch on debugging of subsystems
 //#define DHCP_DEBUG LWIP_DBG_ON
 //#define NETIF_DEBUG                     LWIP_DBG_ON
@@ -115,7 +115,7 @@
 #define LWIP_SOCKET                     0
 #define LWIP_RAW                        0
 
-#define LWIP_NOASSERT 1 // To suppress some errors for now (no debug output)
+//#define LWIP_NOASSERT 1 // To suppress some errors for now (no debug output)
 #define SYS_LIGHTWEIGHT_PROT            1
 #define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 0
 #define LWIP_SO_RCVTIMEO 1 // Needed to interrupt a call to netconn_recv

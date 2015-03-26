@@ -784,6 +784,7 @@ tcp_process(struct tcp_pcb *pcb)
   case SYN_RCVD:
     if (flags & TCP_ACK) {
       /* expected ACK number? */
+    LWIP_DEBUGF(TCP_DEBUG, ("SEQ: ackno=%u, lastack=%u, snd_nx=%u\n", ackno, pcb->lastack+1, pcb->snd_nxt));
       if (TCP_SEQ_BETWEEN(ackno, pcb->lastack+1, pcb->snd_nxt)) {
         pcb->state = ESTABLISHED;
         LWIP_DEBUGF(TCP_DEBUG, ("TCP connection established %"U16_F" -> %"U16_F".\n", inseg.tcphdr->src, inseg.tcphdr->dest));
