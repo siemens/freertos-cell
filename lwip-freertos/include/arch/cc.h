@@ -66,7 +66,7 @@ typedef int sys_prot_t;
 #ifdef LWIP_DEBUG
 #define U16_F "u"
 #define U32_F "u"
-#define LWIP_PLATFORM_DIAG(x)   do { printf x; }while(0)
+#define LWIP_PLATFORM_DIAG(x)   do { printf x; puts("\r"); }while(0)
 #else
 #define LWIP_PLATFORM_DIAG(x)
 #endif
