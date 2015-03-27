@@ -43,7 +43,6 @@
 #define PAP_SUPPORT 0
 #define CHAP_SUPPORT 0
 
-//#define IP_DEBUG 1
 #define LWIP_DEBUG
 #undef LWIP_DEBUG
 #ifdef LWIP_DEBUG
@@ -56,6 +55,10 @@
 //#define NETIF_DEBUG                     LWIP_DBG_ON
 //#define ETHARP_DEBUG                    LWIP_DBG_ON
 //#define UDP_DEBUG                    LWIP_DBG_ON
+//#define TCP_DEBUG LWIP_DBG_ON
+//#define TCP_INPUT_DEBUG LWIP_DBG_ON
+//#define IP_DEBUG LWIP_DBG_ON
+//#define UDP_DEBUG LWIP_DBG_ON
 #endif
 
 #define LWIP_ERR_T int
