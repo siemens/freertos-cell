@@ -710,18 +710,38 @@ static void echoUdpTask(void *pvParameters)
     if (ERR_OK == netconn_recv(conn, &buf)) {
       ip_addr_t *addr = netbuf_fromaddr(buf);
       int port = netbuf_fromport(buf);
-      UART_OUTPUT("UDP recv: %u.%u.%u.%u:%d\n", ip4_addr1(addr), ip4_addr2(addr), ip4_addr3(addr), ip4_addr4(addr), port);
       do {
         void *data;
         u16_t len;
+        UART_OUTPUT("UDP recv: %u.%u.%u.%u:%d %u\n", ip4_addr1(addr), ip4_addr2(addr), ip4_addr3(addr), ip4_addr4(addr), port, xTaskGetTickCount());
         netbuf_data(buf, &data, &len);
         UART_OUTPUT("\tdata: %p l=%u\n\r", data, (unsigned)len);
+        if(1) {
+          struct netbuf *outbuf;
+          outbuf = netbuf_new();
+          if(outbuf) {
+            void *bptr = netbuf_alloc(outbuf, len);
+            if(bptr) {
+              memcpy(bptr, data, len);
+              err = netconn_sendto(conn, outbuf, addr, port);
+              if(ERR_OK != err) {
+                UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
+              }
+              netbuf_delete(outbuf);
+            }
+            else
+              UART_OUTPUT("%s WARNING: netbuf_alloc failed\n", __func__);
+          }
+          else
+            UART_OUTPUT("%s WARNING: no netbuf available\n", __func__);
+        }
       } while(netbuf_next(buf) >= 0);
       netbuf_delete(buf);
     }
     else {
       err = netconn_err(conn);
       UART_OUTPUT("UDP error: err=%d\n\r", err);
+      vTaskDelay(pdMS_TO_TICKS(1000));
     }
   }
 }
@@ -758,7 +778,7 @@ static void echoTcpTask(void *pvParameters)
 
   while(1) {
     struct netconn *newconn;
-    puts("Service online ...\n\r");
+    puts("TCP Service online: port=32000\n\r");
     /* Grab new connection. */
     if(ERR_OK == netconn_accept(conn, &newconn)) {
       static char connected_to_info[32] = "null";

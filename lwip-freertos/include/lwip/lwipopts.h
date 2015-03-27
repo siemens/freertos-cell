@@ -59,6 +59,7 @@
 //#define TCP_INPUT_DEBUG LWIP_DBG_ON
 //#define IP_DEBUG LWIP_DBG_ON
 //#define UDP_DEBUG LWIP_DBG_ON
+//#define PPP_DEBUG LWIP_DBG_ON
 #endif
 
 #define LWIP_ERR_T int
