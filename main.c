@@ -762,7 +762,7 @@ static void echoTcpTask(void *pvParameters)
   }
 
   /* Bind connection to well known port number TCP_CAM_PORT. */
-  if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 32000)) {
+  if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 33000)) {
     printf("ERROR: netconn_bind: %d\n", netconn_err(conn));
     ARM_SLEEP;
   }
@@ -775,7 +775,7 @@ static void echoTcpTask(void *pvParameters)
 
   while(1) {
     struct netconn *newconn;
-    puts("TCP Service online: port=32000\n\r");
+    puts("TCP Service online: port=33000\n\r");
     /* Grab new connection. */
     if(ERR_OK == netconn_accept(conn, &newconn)) {
       static char connected_to_info[32] = "null";
