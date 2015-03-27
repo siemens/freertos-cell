@@ -67,7 +67,8 @@ void sio_send(u8_t c, sio_fd_t fd)
 
 u32_t sio_write(sio_fd_t fd, u8_t *data, u32_t len)
 {
-  while(len-- > 0)
+  u32_t l = len;
+  while(l-- > 0)
     serial_putchar(fd, *data++);
   return len;
 }

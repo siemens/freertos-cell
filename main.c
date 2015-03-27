@@ -103,7 +103,7 @@
 
 #define UART_LOCK xSemaphoreTake(uart_mutex, portMAX_DELAY)
 #define UART_UNLOCK xSemaphoreGive(uart_mutex)
-#define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); UART_UNLOCK;} } while(0)
+#define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); puts("\r"); UART_UNLOCK;} } while(0)
 
 /* }}} */
 
@@ -684,7 +684,69 @@ static void tcpip_init_done_cb(void *arg)
   *((int*)arg) = 1;
 }
 
-static void echoTask(void *pvParameters)
+static void echoUdpTask(void *pvParameters)
+{
+  struct netconn *conn = netconn_new_with_callback(NETCONN_UDP, NULL);
+  if(!conn) {
+    printf("netconn_new_with_callback failed\n");
+    ARM_SLEEP;
+  }
+
+  while(!tcpip_done_flag) {
+    UART_OUTPUT("%s: TCP still not up ...\n", __func__);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+
+  /* Bind connection to well known port number */
+  if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 33000)) {
+    printf("ERROR: netconn_bind: %d\n", netconn_err(conn));
+    ARM_SLEEP;
+  }
+
+  puts("UDP Service online: port=33000\n\r");
+  while(1) {
+    err_t err = ERR_OK;
+    struct netbuf *buf;
+    if (ERR_OK == netconn_recv(conn, &buf)) {
+      ip_addr_t *addr = netbuf_fromaddr(buf);
+      int port = netbuf_fromport(buf);
+      do {
+        void *data;
+        u16_t len;
+        UART_OUTPUT("UDP recv: %u.%u.%u.%u:%d %u\n", ip4_addr1(addr), ip4_addr2(addr), ip4_addr3(addr), ip4_addr4(addr), port, xTaskGetTickCount());
+        netbuf_data(buf, &data, &len);
+        UART_OUTPUT("\tdata: %p l=%u\n\r", data, (unsigned)len);
+        if(1) {
+          struct netbuf *outbuf;
+          outbuf = netbuf_new();
+          if(outbuf) {
+            void *bptr = netbuf_alloc(outbuf, len);
+            if(bptr) {
+              memcpy(bptr, data, len);
+              err = netconn_sendto(conn, outbuf, addr, port);
+              if(ERR_OK != err) {
+                UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
+              }
+              netbuf_delete(outbuf);
+            }
+            else
+              UART_OUTPUT("%s WARNING: netbuf_alloc failed\n", __func__);
+          }
+          else
+            UART_OUTPUT("%s WARNING: no netbuf available\n", __func__);
+        }
+      } while(netbuf_next(buf) >= 0);
+      netbuf_delete(buf);
+    }
+    else {
+      err = netconn_err(conn);
+      UART_OUTPUT("UDP error: err=%d\n\r", err);
+      vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+  }
+}
+
+static void echoTcpTask(void *pvParameters)
 {
   struct netconn *conn = netconn_new_with_callback(NETCONN_TCP, NULL);
   if(!conn) {
@@ -699,6 +761,7 @@ static void echoTask(void *pvParameters)
     vTaskDelay(pdMS_TO_TICKS(500));
   }
   puts("S1\n\r");
+
   /* Bind connection to well known port number TCP_CAM_PORT. */
   if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 32000)) {
     printf("ERROR: netconn_bind: %d\n", netconn_err(conn));
@@ -715,7 +778,7 @@ static void echoTask(void *pvParameters)
 
   while(1) {
     struct netconn *newconn;
-    puts("Service online ...\n\r");
+    puts("TCP Service online: port=32000\n\r");
     /* Grab new connection. */
     if(ERR_OK == netconn_accept(conn, &newconn)) {
       static char connected_to_info[32] = "null";
@@ -728,15 +791,15 @@ static void echoTask(void *pvParameters)
       snprintf(connected_to_info, sizeof(connected_to_info), "\"%u.%u.%u.%u:%u\"", ip4_addr1(&peer_addr), ip4_addr2(&peer_addr), ip4_addr3(&peer_addr), ip4_addr4(&peer_addr), peer_port);
       printf("%s: C[%s] <=========> S\n", __func__, connected_to_info);
       // Do not block endless in the receive function
-      netconn_set_recvtimeout(conn, 2000);
+      netconn_set_recvtimeout(newconn, 2000);
       // Switch off the nagle algorithm
-      tcp_nagle_disable(conn->pcb.tcp);
+      tcp_nagle_disable(newconn->pcb.tcp);
       printf("Server present\n\r");
       do {
         while(1) {
           /* Is data available on the receive queue */
           struct netbuf *buf;
-          if (ERR_OK == netconn_recv(conn, &buf)) {
+          if (ERR_OK == netconn_recv(newconn, &buf)) {
             do {
               void *data;
               u16_t len;
@@ -748,11 +811,11 @@ static void echoTask(void *pvParameters)
           else
             break;
         }
-        err = netconn_err(conn);
+        err = netconn_err(newconn);
       } while(!ERR_IS_FATAL(err));
       puts("S END\n\r");
-      netconn_close(conn);
-      if(ERR_OK != netconn_delete(conn))
+      netconn_close(newconn);
+      if(ERR_OK != netconn_delete(newconn))
         printf("netconn_delete failed\n\r");
     }
     else 
@@ -783,8 +846,8 @@ static void pppTask(void *pvParameters)
         UART_OUTPUT("PPP: pd=%p still not connected ...\n\r", ppp_obj);
       }
       /* Now we are connected */
+      UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
       while(connected) {
-        UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
         vTaskDelay(pdMS_TO_TICKS(1000));
       }
     }
@@ -798,6 +861,15 @@ static void pppTask(void *pvParameters)
 /* }}} */
 
 /* {{{1 main */
+
+int putchar(int c)
+{
+  serial_putchar(ser_dev, c);
+  if('\n' == c)
+    serial_putchar(ser_dev, '\r');
+  return c;
+}
+
 void inmate_main(void)
 {
   unsigned i;
@@ -813,8 +885,15 @@ void inmate_main(void)
    * communicates with the pppInputThread (see below) */
   tcpip_init(tcpip_init_done_cb, &tcpip_done_flag);
 
-  xTaskCreate( echoTask, /* The function that implements the task. */
-      "echod", /* The text name assigned to the task - for debug only; not used by the kernel. */
+  if(0) xTaskCreate( echoTcpTask, /* The function that implements the task. */
+      "echot", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      NULL,                                                            /* The parameter passed to the task */
+      configMAX_PRIORITIES/2, /* The priority assigned to the task. */
+      NULL );
+
+  xTaskCreate( echoUdpTask, /* The function that implements the task. */
+      "echou", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL,                                                            /* The parameter passed to the task */
       configMAX_PRIORITIES/2, /* The priority assigned to the task. */
