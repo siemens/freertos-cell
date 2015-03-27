@@ -103,7 +103,7 @@
 
 #define UART_LOCK xSemaphoreTake(uart_mutex, portMAX_DELAY)
 #define UART_UNLOCK xSemaphoreGive(uart_mutex)
-#define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); UART_UNLOCK;} } while(0)
+#define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); puts("\r"); UART_UNLOCK;} } while(0)
 
 /* }}} */
 
@@ -699,6 +699,7 @@ static void echoTask(void *pvParameters)
     vTaskDelay(pdMS_TO_TICKS(500));
   }
   puts("S1\n\r");
+
   /* Bind connection to well known port number TCP_CAM_PORT. */
   if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 32000)) {
     printf("ERROR: netconn_bind: %d\n", netconn_err(conn));
@@ -783,8 +784,8 @@ static void pppTask(void *pvParameters)
         UART_OUTPUT("PPP: pd=%p still not connected ...\n\r", ppp_obj);
       }
       /* Now we are connected */
+      UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
       while(connected) {
-        UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
         vTaskDelay(pdMS_TO_TICKS(1000));
       }
     }
@@ -798,6 +799,15 @@ static void pppTask(void *pvParameters)
 /* }}} */
 
 /* {{{1 main */
+
+int putchar(int c)
+{
+  serial_putchar(ser_dev, c);
+  if('\n' == c)
+    serial_putchar(ser_dev, '\r');
+  return c;
+}
+
 void inmate_main(void)
 {
   unsigned i;
