@@ -760,21 +760,18 @@ static void echoTcpTask(void *pvParameters)
     UART_OUTPUT("%s: TCP still not up ...\n", __func__);
     vTaskDelay(pdMS_TO_TICKS(500));
   }
-  puts("S1\n\r");
 
   /* Bind connection to well known port number TCP_CAM_PORT. */
   if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 32000)) {
     printf("ERROR: netconn_bind: %d\n", netconn_err(conn));
     ARM_SLEEP;
   }
-  puts("S2\n\r");
 
   /* Tell connection to go into listening mode. */
-  if(ERR_OK != netconn_listen(conn)) {
+  if(ERR_OK == netconn_listen(conn)) {
     printf("ERROR: %s netconn_listen: %d\n", __func__, netconn_err(conn));
     ARM_SLEEP;
   }
-  puts("S3\n\r");
 
   while(1) {
     struct netconn *newconn;
@@ -784,39 +781,33 @@ static void echoTcpTask(void *pvParameters)
       static char connected_to_info[32] = "null";
       ip_addr_t peer_addr;
       u16_t peer_port;
-      err_t err = ERR_OK;
 
-      puts("New client\n\r");
       netconn_peer(newconn, &peer_addr, &peer_port);
       snprintf(connected_to_info, sizeof(connected_to_info), "\"%u.%u.%u.%u:%u\"", ip4_addr1(&peer_addr), ip4_addr2(&peer_addr), ip4_addr3(&peer_addr), ip4_addr4(&peer_addr), peer_port);
       printf("%s: C[%s] <=========> S\n", __func__, connected_to_info);
       // Do not block endless in the receive function
-      netconn_set_recvtimeout(newconn, 2000);
+      //netconn_set_recvtimeout(newconn, 2000);
       // Switch off the nagle algorithm
-      tcp_nagle_disable(newconn->pcb.tcp);
-      printf("Server present\n\r");
-      do {
-        while(1) {
-          /* Is data available on the receive queue */
-          struct netbuf *buf;
-          if (ERR_OK == netconn_recv(newconn, &buf)) {
-            do {
-              void *data;
-              u16_t len;
-              netbuf_data(buf, &data, &len);
-              printf("DATA: %p l=%u\n\r", data, (unsigned)len);
-            } while(netbuf_next(buf) >= 0);
-            netbuf_delete(buf);
-          }
-          else
-            break;
-        }
-        err = netconn_err(newconn);
-      } while(!ERR_IS_FATAL(err));
-      puts("S END\n\r");
+      //tcp_nagle_disable(newconn->pcb.tcp);
+      while(1) {
+        int lcnt = 0;
+        /* Is data available on the receive queue */
+        struct netbuf *buf;
+        err_t err = netconn_recv(newconn, &buf);
+        if (ERR_IS_FATAL(err))
+          break;
+        do {
+          void *data;
+          u16_t len;
+          netbuf_data(buf, &data, &len);
+          printf("DATA%d: %p l=%u\n\r", ++lcnt, data, (unsigned)len);
+        } while(netbuf_next(buf) >= 0);
+        netbuf_delete(buf);
+      }
+      printf("%s: C[%s] <=== ! ===> S\n", __func__, connected_to_info);
       netconn_close(newconn);
       if(ERR_OK != netconn_delete(newconn))
-        printf("netconn_delete failed\n\r");
+        printf("WARNING: netconn_delete failed\n\r");
     }
     else 
       vTaskDelay(pdMS_TO_TICKS(1000));
@@ -885,7 +876,7 @@ void inmate_main(void)
    * communicates with the pppInputThread (see below) */
   tcpip_init(tcpip_init_done_cb, &tcpip_done_flag);
 
-  if(0) xTaskCreate( echoTcpTask, /* The function that implements the task. */
+  if(1) xTaskCreate( echoTcpTask, /* The function that implements the task. */
       "echot", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL,                                                            /* The parameter passed to the task */
