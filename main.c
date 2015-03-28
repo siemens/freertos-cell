@@ -684,6 +684,22 @@ static void tcpip_init_done_cb(void *arg)
   *((int*)arg) = 1;
 }
 
+static struct netbuf *construct_answer(void *data, int len)
+{
+  struct netbuf *outbuf;
+  outbuf = netbuf_new();
+  if(outbuf) {
+    void *bptr = netbuf_alloc(outbuf, len);
+    if(bptr)
+      memcpy(bptr, data, len);
+    else {
+      netbuf_delete(outbuf);
+      outbuf = NULL;
+    }
+  }
+  return outbuf;
+}
+
 static void echoUdpTask(void *pvParameters)
 {
   struct netconn *conn = netconn_new_with_callback(NETCONN_UDP, NULL);
@@ -711,30 +727,21 @@ static void echoUdpTask(void *pvParameters)
       ip_addr_t *addr = netbuf_fromaddr(buf);
       int port = netbuf_fromport(buf);
       do {
+        struct netbuf *outbuf;
         void *data;
         u16_t len;
         UART_OUTPUT("UDP recv: %u.%u.%u.%u:%d %u\n", ip4_addr1(addr), ip4_addr2(addr), ip4_addr3(addr), ip4_addr4(addr), port, xTaskGetTickCount());
         netbuf_data(buf, &data, &len);
         UART_OUTPUT("\tdata: %p l=%u\n\r", data, (unsigned)len);
-        if(1) {
-          struct netbuf *outbuf;
-          outbuf = netbuf_new();
-          if(outbuf) {
-            void *bptr = netbuf_alloc(outbuf, len);
-            if(bptr) {
-              memcpy(bptr, data, len);
-              err = netconn_sendto(conn, outbuf, addr, port);
-              if(ERR_OK != err) {
-                UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
-              }
-              netbuf_delete(outbuf);
-            }
-            else
-              UART_OUTPUT("%s WARNING: netbuf_alloc failed\n", __func__);
-          }
-          else
-            UART_OUTPUT("%s WARNING: no netbuf available\n", __func__);
+        outbuf = construct_answer(data, len);
+        if(outbuf) {
+          err = netconn_sendto(conn, outbuf, addr, port);
+          if(ERR_OK != err)
+            UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
+          netbuf_delete(outbuf);
         }
+        else
+          UART_OUTPUT("%s WARNING: no netbuf available\n", __func__);
       } while(netbuf_next(buf) >= 0);
       netbuf_delete(buf);
     }
@@ -800,7 +807,10 @@ static void echoTcpTask(void *pvParameters)
           void *data;
           u16_t len;
           netbuf_data(buf, &data, &len);
-          printf("DATA%d: %p l=%u\n\r", ++lcnt, data, (unsigned)len);
+          printf("DATA%d: %p l=%u %u\n\r", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
+          err = netconn_write(newconn, data, len, NETCONN_COPY);
+          if(ERR_OK != err)
+            UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
         } while(netbuf_next(buf) >= 0);
         netbuf_delete(buf);
       }
@@ -930,7 +940,7 @@ void inmate_main(void)
         configMAX_PRIORITIES-1, /* The priority assigned to the task. */
         NULL );								    /* The task handle is not required, so NULL is passed. */
   }
-  if(0) xTaskCreate( blinkTask, /* The function that implements the task. */
+  if(1) xTaskCreate( blinkTask, /* The function that implements the task. */
       "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL, 								/* The parameter passed to the task */
