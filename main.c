@@ -864,6 +864,22 @@ static void pppTask(void *pvParameters)
 }
 /* }}} */
 
+// {{{1 show network statistics
+#if LWIP_STATS
+void stats_display(void);
+
+static void netstatTask(void *data)
+{
+  while(1) {
+    UART_LOCK;
+    stats_display();
+    UART_UNLOCK;
+    vTaskDelay( 5000 / portTICK_RATE_MS );
+  }
+}
+#endif
+//}}}
+
 /* {{{1 main */
 
 int putchar(int c)
@@ -909,6 +925,10 @@ void inmate_main(void)
       NULL,                                                            /* The parameter passed to the task */
       configMAX_PRIORITIES/2, /* The priority assigned to the task. */
       NULL );
+
+#if LWIP_STATS
+  if(1) xTaskCreate( netstatTask, (void*)"ns", configMINIMAL_STACK_SIZE, NULL, 6+tskIDLE_PRIORITY, NULL );
+#endif
 
   xTaskCreate( uartTask, /* The function that implements the task. */
       "uartread", /* The text name assigned to the task - for debug only; not used by the kernel. */
