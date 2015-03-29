@@ -201,3 +201,9 @@ void *memset(void *s, int c, size_t count)
 		*xs++ = c;
 	return s;
 }
+
+char *strcpy(char *dest, const char *src)
+{
+  size_t n = strlen(src) + 1;
+  return memcpy(dest, src, n);
+}
