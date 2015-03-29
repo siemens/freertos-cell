@@ -796,23 +796,26 @@ static void echoTcpTask(void *pvParameters)
       //netconn_set_recvtimeout(newconn, 2000);
       // Switch off the nagle algorithm
       //tcp_nagle_disable(newconn->pcb.tcp);
+      /* Now we enter the receiver loop */
       while(1) {
         int lcnt = 0;
         /* Is data available on the receive queue */
         struct netbuf *buf;
         err_t err = netconn_recv(newconn, &buf);
-        if (ERR_IS_FATAL(err))
+        if(ERR_OK == err) {
+          do {
+            void *data;
+            u16_t len;
+            netbuf_data(buf, &data, &len);
+            printf("DATA%d: %p l=%u %u\n\r", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
+            err = netconn_write(newconn, data, len, NETCONN_COPY);
+            if(ERR_OK != err)
+              UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
+          } while(netbuf_next(buf) >= 0);
+          netbuf_delete(buf);
+        }
+        else if (ERR_IS_FATAL(err))
           break;
-        do {
-          void *data;
-          u16_t len;
-          netbuf_data(buf, &data, &len);
-          printf("DATA%d: %p l=%u %u\n\r", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
-          err = netconn_write(newconn, data, len, NETCONN_COPY);
-          if(ERR_OK != err)
-            UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
-        } while(netbuf_next(buf) >= 0);
-        netbuf_delete(buf);
       }
       printf("%s: C[%s] <=== ! ===> S\n", __func__, connected_to_info);
       netconn_close(newconn);
