@@ -122,7 +122,7 @@
 //#define LWIP_NOASSERT 1 // To suppress some errors for now (no debug output)
 #define SYS_LIGHTWEIGHT_PROT            1
 #define LWIP_ALLOW_MEM_FREE_FROM_OTHER_CONTEXT 0
-#define LWIP_SO_RCVTIMEO 1 // Needed to interrupt a call to netconn_recv
+#define LWIP_SO_RCVTIMEO 0 // Needed to interrupt a call to netconn_recv
 
 #ifndef LWIP_DHCP
 #define LWIP_DHCP               0
