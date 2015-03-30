@@ -576,6 +576,7 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 {
   struct netif *pppif = ppp_netif(pcb);
   LWIP_UNUSED_ARG(ctx);
+  TaskHandle_t task = ctx;
 
   switch(err_code) {
     case PPPERR_NONE: {
@@ -659,11 +660,12 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
    */
 
   if (err_code == PPPERR_NONE) {
-    *((int*)ctx) = 1;
+    xTaskNotify(task, ~0, eSetValueWithOverwrite);
     return;
   }
-  else
-    *((int*)ctx) = 0;
+  else {
+    xTaskNotify(task, 0, eSetValueWithOverwrite);
+  }
   /* ppp_close() was previously called, don't reconnect */
   if (err_code == PPPERR_USER) {
     /* ppp_free(); -- can be called here */
@@ -795,8 +797,7 @@ static void echoTcpTask(void *pvParameters)
       // Do not block endless in the receive function
       //netconn_set_recvtimeout(newconn, 2000);
       // Switch off the nagle algorithm
-      //tcp_nagle_disable(newconn->pcb.tcp);
-      /* Now we enter the receiver loop */
+      tcp_nagle_disable(newconn->pcb.tcp);
       while(1) {
         int lcnt = 0;
         /* Is data available on the receive queue */
@@ -831,34 +832,28 @@ static void pppTask(void *pvParameters)
 {
   const char *username = "rtosuser";
   const char *password = "rtospass";
-  int connected = 0;
+  TaskHandle_t self = xTaskGetCurrentTaskHandle();
   struct netif nif;
   while(!tcpip_done_flag) {
     UART_OUTPUT("%s: TCP still not up ...\n", __func__);
     vTaskDelay(pdMS_TO_TICKS(500));
   }
   memset(&nif, 0, sizeof(nif));
-  ppp_obj = pppos_create(&nif, ser_dev, ppp_status_cb, &connected);
+  ppp_obj = pppos_create(&nif, ser_dev, ppp_status_cb, self);
+  configASSERT(NULL != ppp_obj);
   ppp_set_default(ppp_obj);
   ppp_set_auth(ppp_obj, PPPAUTHTYPE_ANY, username, password);
   ppp_connect(ppp_obj, 0);
   while(1) {
-    if(ppp_obj) {
-      // the thread was successfully started.
-      while (!connected) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-        UART_OUTPUT("PPP: pd=%p still not connected ...\n\r", ppp_obj);
-      }
-      /* Now we are connected */
-      UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
-      while(connected) {
-        vTaskDelay(pdMS_TO_TICKS(1000));
-      }
+    uint32_t connected;
+    while(pdFALSE == xTaskNotifyWait(0, ~0, &connected, pdMS_TO_TICKS(1000))) {
+      UART_OUTPUT("PPP: still not connected ...\n\r");
     }
-    else {
-      UART_OUTPUT("PPP over serial failed\n\r");
-      vTaskDelay(pdMS_TO_TICKS(500));
-      connected = 0;
+    /* Now we are connected */
+    while(connected) {
+      do {
+        UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
+      } while(pdFALSE == xTaskNotifyWait(0, ~0, &connected, portMAX_DELAY));
     }
   }
 }
