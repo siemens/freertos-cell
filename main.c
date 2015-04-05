@@ -808,25 +808,19 @@ static void echoTcpTask(void *pvParameters)
             void *data;
             u16_t len;
             netbuf_data(buf, &data, &len);
-            printf("DATA%d: %p l=%u %u\n\r", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
+            UART_OUTPUT("DATA%d: %p l=%u %u\n", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
             err = netconn_write(newconn, data, len, NETCONN_COPY);
             if(ERR_OK != err)
               UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
           } while(netbuf_next(buf) >= 0);
           netbuf_delete(buf);
         }
-        else if (ERR_IS_FATAL(err))
+        else if (ERR_IS_FATAL(err)) {
+          UART_OUTPUT("RECV ERR: err=%d\n", err);
           break;
-        do {
-          void *data;
-          u16_t len;
-          netbuf_data(buf, &data, &len);
-          printf("DATA%d: %p l=%u %u\n\r", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
-          err = netconn_write(newconn, data, len, NETCONN_COPY);
-          if(ERR_OK != err)
-            UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
-        } while(netbuf_next(buf) >= 0);
-        netbuf_delete(buf);
+        }
+        else
+          UART_OUTPUT("RECV WARN: err=%d\n", err);
       }
       printf("%s: C[%s] <=== ! ===> S\n", __func__, connected_to_info);
       netconn_close(newconn);
