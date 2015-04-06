@@ -292,7 +292,9 @@ static void handle_uart_irq(void)
 {
   uint8_t v = (uint8_t)serial_irq_getchar(ser_dev);
   BaseType_t do_yield = pdFALSE;
-  xQueueSendToBackFromISR(ser_rx_queue, &v, &do_yield);
+  if(errQUEUE_FULL == xQueueSendToBackFromISR(ser_rx_queue, &v, &do_yield)) {
+    puts("!");
+  }
   portYIELD_FROM_ISR(do_yield);
 }
 
@@ -896,7 +898,7 @@ void inmate_main(void)
   prvSetupHardware();
   uart_mutex = xSemaphoreCreateMutex();
   configASSERT(NULL != uart_mutex);
-  ser_rx_queue = xQueueCreate(8*PPP_MRU, sizeof(uint8_t));
+  ser_rx_queue = xQueueCreate(LWIP_MEM_ALIGN_SIZE(TCP_SND_BUF), sizeof(uint8_t));
   configASSERT(NULL != ser_rx_queue);
   sio_timeout_set(ser_dev, 3);
   sio_queue_register(ser_dev, ser_rx_queue);
