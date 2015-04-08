@@ -84,6 +84,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
+#include "event_groups.h"
 
 /* lwIP includes */
 #include "lwip/tcpip.h"
@@ -105,6 +106,11 @@
 #define UART_UNLOCK xSemaphoreGive(uart_mutex)
 #define UART_OUTPUT(args...) do { if(pdPASS == UART_LOCK) { printf(args); puts("\r"); UART_UNLOCK;} } while(0)
 
+#define EVBIT_TCP_IS_UP   (1<<0)
+#define EVBIT_PPP_IS_UP   (1<<1)
+#define EVBIT_PPP_IS_DOWN (1<<2)
+#define EVBIT_PPP_INIT_DONE (1<<3)
+
 /* }}} */
 
 /* {{{1 Prototypes */
@@ -119,7 +125,18 @@ int printf(const char *format, ...);
 
 /* {{{1 Global variables */
 static SemaphoreHandle_t uart_mutex;
+static EventGroupHandle_t event_status;
 sio_fd_t ser_dev;
+
+/* }}} */
+
+/* {{{1 Helper functions */
+static void wait_for_tcpip(const char *label)
+{
+  while(!xEventGroupWaitBits(event_status, EVBIT_TCP_IS_UP, pdFALSE, pdTRUE, pdMS_TO_TICKS(1000)))
+    UART_OUTPUT("%s: TCP still not up ...\n", label);
+  UART_OUTPUT("%s: TCP ready\n", label);
+}
 /* }}} */
 
 /* {{{1 FreeRTOS debug hooks */
@@ -261,10 +278,9 @@ static void uartTask(void *pvParameters)
 {
   static uint8_t s[LWIP_MEM_ALIGN_SIZE(2*PPP_MRU)];
   sio_timeout_set(ser_dev, 10);
-  while(!ppp_obj) {
-    printf("%s: wating for ppp setup ...\n\r", __func__);
-    vTaskDelay(pdMS_TO_TICKS(200));
-  }
+  while(!xEventGroupWaitBits(event_status, EVBIT_PPP_INIT_DONE, pdTRUE, pdTRUE, pdMS_TO_TICKS(1000)))
+    UART_OUTPUT("%s: waiting for ppp setup ...\n\r", __func__);
+  UART_OUTPUT("%s: entering SIO reader loop ...\n\r", __func__);
   while(pdTRUE) {
     int n = sio_tryread(ser_dev, s, sizeof(s));
     if(n > 0)
@@ -578,82 +594,68 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
 {
   struct netif *pppif = ppp_netif(pcb);
   LWIP_UNUSED_ARG(ctx);
-  TaskHandle_t task = ctx;
 
   switch(err_code) {
     case PPPERR_NONE: {
 #if LWIP_DNS
                         ip_addr_t ns;
 #endif /* LWIP_DNS */
-                        printf("ppp_status_cb: Connected\n");
+                        UART_OUTPUT("ppp_status_cb: Connected\n\r");
 #if PPP_IPV4_SUPPORT
-                        printf("   our_ipaddr  = %s\n", ipaddr_ntoa(&pppif->ip_addr));
-                        printf("   his_ipaddr  = %s\n", ipaddr_ntoa(&pppif->gw));
-                        printf("   netmask     = %s\n", ipaddr_ntoa(&pppif->netmask));
+                        UART_OUTPUT("   our_ipaddr  = %s\n", ipaddr_ntoa(&pppif->ip_addr));
+                        UART_OUTPUT("   his_ipaddr  = %s\n", ipaddr_ntoa(&pppif->gw));
+                        UART_OUTPUT("   netmask     = %s\n", ipaddr_ntoa(&pppif->netmask));
 #if LWIP_DNS
                         ns = dns_getserver(0);
-                        printf("   dns1        = %s\n", ipaddr_ntoa(&ns));
+                        UART_OUTPUT("   dns1        = %s\n", ipaddr_ntoa(&ns));
                         ns = dns_getserver(1);
-                        printf("   dns2        = %s\n", ipaddr_ntoa(&ns));
+                        UART_OUTPUT("   dns2        = %s\n", ipaddr_ntoa(&ns));
 #endif /* LWIP_DNS */
 #endif /* PPP_IPV4_SUPPORT */
 #if PPP_IPV6_SUPPORT
-                        printf("   our6_ipaddr = %s\n", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+                        UART_OUTPUT("   our6_ipaddr = %s\n", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
 #endif /* PPP_IPV6_SUPPORT */
                         break;
                       }
-    case PPPERR_PARAM: {
-                         printf("status_cb: Invalid parameter\n");
-                         break;
-                       }
-    case PPPERR_OPEN: {
-                        printf("status_cb: Unable to open PPP session\n");
-                        break;
-                      }
-    case PPPERR_DEVICE: {
-                          printf("status_cb: Invalid I/O device for PPP\n");
-                          break;
-                        }
-    case PPPERR_ALLOC: {
-                         printf("status_cb: Unable to allocate resources\n");
-                         break;
-                       }
-    case PPPERR_USER: {
-                        printf("status_cb: User interrupt\n");
-                        break;
-                      }
-    case PPPERR_CONNECT: {
-                           printf("status_cb: Connection lost\n");
-                           break;
-                         }
-    case PPPERR_AUTHFAIL: {
-                            printf("status_cb: Failed authentication challenge\n");
-                            break;
-                          }
-    case PPPERR_PROTOCOL: {
-                            printf("status_cb: Failed to meet protocol\n");
-                            break;
-                          }
-    case PPPERR_PEERDEAD: {
-                            printf("status_cb: Connection timeout\n");
-                            break;
-                          }
-    case PPPERR_IDLETIMEOUT: {
-                               printf("status_cb: Idle Timeout\n");
-                               break;
-                             }
-    case PPPERR_CONNECTTIME: {
-                               printf("status_cb: Max connect time reached\n");
-                               break;
-                             }
-    case PPPERR_LOOPBACK: {
-                            printf("status_cb: Loopback detected\n");
-                            break;
-                          }
-    default: {
-               printf("status_cb: Unknown error code %d\n", err_code);
-               break;
-             }
+    case PPPERR_PARAM:
+                      UART_OUTPUT("ppp_status_cb: Invalid parameter\n");
+                      break;
+    case PPPERR_OPEN:
+                      UART_OUTPUT("ppp_status_cb: Unable to open PPP session\n");
+                      break;
+    case PPPERR_DEVICE:
+                      UART_OUTPUT("ppp_status_cb: Invalid I/O device for PPP\n");
+                      break;
+    case PPPERR_ALLOC:
+                      UART_OUTPUT("ppp_status_cb: Unable to allocate resources\n");
+                      break;
+    case PPPERR_USER:
+                      UART_OUTPUT("ppp_status_cb: User interrupt\n");
+                      break;
+    case PPPERR_CONNECT:
+                      UART_OUTPUT("ppp_status_cb: Connection lost\n");
+                      break;
+    case PPPERR_AUTHFAIL:
+                      UART_OUTPUT("ppp_status_cb: Failed authentication challenge\n");
+                      break;
+    case PPPERR_PROTOCOL:
+                      UART_OUTPUT("ppp_status_cb: Failed to meet protocol\n");
+                      break;
+    case PPPERR_PEERDEAD:
+                      UART_OUTPUT("ppp_status_cb: Connection timeout\n");
+                      break;
+    case PPPERR_IDLETIMEOUT:
+                      UART_OUTPUT("ppp_status_cb: Idle Timeout\n");
+                      break;
+    case PPPERR_CONNECTTIME:
+                      UART_OUTPUT("ppp_status_cb: Max connect time reached\n");
+                      break;
+    case PPPERR_LOOPBACK:
+                      UART_OUTPUT("ppp_status_cb: Loopback detected\n");
+                      break;
+    default:
+                      UART_OUTPUT("ppp_status_cb: Unknown error code %d\n", err_code);
+                      break;
   }
 
   /*
@@ -662,11 +664,11 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
    */
 
   if (err_code == PPPERR_NONE) {
-    xTaskNotify(task, ~0, eSetValueWithOverwrite);
+    xEventGroupSetBits(event_status, EVBIT_PPP_IS_UP);
     return;
   }
   else {
-    xTaskNotify(task, 0, eSetValueWithOverwrite);
+    xEventGroupSetBits(event_status, EVBIT_PPP_IS_DOWN);
   }
   /* ppp_close() was previously called, don't reconnect */
   if (err_code == PPPERR_USER) {
@@ -675,17 +677,15 @@ static void ppp_status_cb(ppp_pcb *pcb, int err_code, void *ctx)
   }
 
   /*
-   * Try to reconnect in 30 seconds, if you need a modem chatscript you have
+   * Try to reconnect in 2 seconds, if you need a modem chatscript you have
    * to do a much better signaling here ;-)
    */
   ppp_connect(pcb, 2);
 }
 
-static int tcpip_done_flag = 0;
-
 static void tcpip_init_done_cb(void *arg)
 {
-  *((int*)arg) = 1;
+  xEventGroupSetBits(event_status, EVBIT_TCP_IS_UP);
 }
 
 static struct netbuf *construct_answer(void *data, int len)
@@ -712,10 +712,7 @@ static void echoUdpTask(void *pvParameters)
     ARM_SLEEP;
   }
 
-  while(!tcpip_done_flag) {
-    UART_OUTPUT("%s: TCP still not up ...\n", __func__);
-    vTaskDelay(pdMS_TO_TICKS(500));
-  }
+  wait_for_tcpip(__func__);
 
   /* Bind connection to well known port number */
   if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 33000)) {
@@ -723,7 +720,6 @@ static void echoUdpTask(void *pvParameters)
     ARM_SLEEP;
   }
 
-  puts("UDP Service online: port=33000\n\r");
   while(1) {
     err_t err = ERR_OK;
     struct netbuf *buf;
@@ -767,10 +763,7 @@ static void echoTcpTask(void *pvParameters)
   if(SO_REUSE)
     ip_set_option(conn->pcb.tcp, SOF_REUSEADDR);
 
-  while(!tcpip_done_flag) {
-    UART_OUTPUT("%s: TCP still not up ...\n", __func__);
-    vTaskDelay(pdMS_TO_TICKS(500));
-  }
+  wait_for_tcpip(__func__);
 
   /* Bind connection to well known port number TCP_CAM_PORT. */
   if(ERR_OK != netconn_bind(conn, IP_ADDR_ANY, 33000)) {
@@ -779,7 +772,7 @@ static void echoTcpTask(void *pvParameters)
   }
 
   /* Tell connection to go into listening mode. */
-  if(ERR_OK == netconn_listen(conn)) {
+  if(ERR_OK != netconn_listen(conn)) {
     printf("ERROR: %s netconn_listen: %d\n", __func__, netconn_err(conn));
     ARM_SLEEP;
   }
@@ -810,7 +803,7 @@ static void echoTcpTask(void *pvParameters)
             void *data;
             u16_t len;
             netbuf_data(buf, &data, &len);
-            UART_OUTPUT("DATA%d: %p l=%u %u\n", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
+            UART_OUTPUT("TCP%d: %p l=%u %u\n", ++lcnt, data, (unsigned)len, xTaskGetTickCount());
             err = netconn_write(newconn, data, len, NETCONN_COPY);
             if(ERR_OK != err)
               UART_OUTPUT("%s WARNING: sendto err=%d\n", __func__, err);
@@ -838,29 +831,41 @@ static void pppTask(void *pvParameters)
 {
   const char *username = "rtosuser";
   const char *password = "rtospass";
-  TaskHandle_t self = xTaskGetCurrentTaskHandle();
+  const char *msg = NULL;
   struct netif nif;
-  while(!tcpip_done_flag) {
-    UART_OUTPUT("%s: TCP still not up ...\n", __func__);
-    vTaskDelay(pdMS_TO_TICKS(500));
-  }
+  TickType_t delay = pdMS_TO_TICKS(2000);
+
+  wait_for_tcpip(__func__);
   memset(&nif, 0, sizeof(nif));
-  ppp_obj = pppos_create(&nif, ser_dev, ppp_status_cb, self);
+  ppp_obj = pppos_create(&nif, ser_dev, ppp_status_cb, NULL);
   configASSERT(NULL != ppp_obj);
   ppp_set_default(ppp_obj);
   ppp_set_auth(ppp_obj, PPPAUTHTYPE_ANY, username, password);
   ppp_connect(ppp_obj, 0);
+  xEventGroupSetBits(event_status, EVBIT_PPP_INIT_DONE);
   while(1) {
-    uint32_t connected;
-    while(pdFALSE == xTaskNotifyWait(0, ~0, &connected, pdMS_TO_TICKS(1000))) {
-      UART_OUTPUT("PPP: still not connected ...\n\r");
+    EventBits_t evbits_res;
+    const EventBits_t evbit_mask = EVBIT_PPP_IS_DOWN | EVBIT_PPP_IS_UP;
+
+    evbits_res = evbit_mask & xEventGroupWaitBits(event_status,
+        evbit_mask, // uxBitsToWaitFor
+        pdTRUE, // xClearOnExit
+        pdFALSE,    // xWaitForAllBits
+        delay);
+    switch(evbits_res) {
+      case EVBIT_PPP_IS_DOWN:
+        msg = "PPP: still not connected ...\n\r";
+        delay = pdMS_TO_TICKS(2000);
+        break;
+      case EVBIT_PPP_IS_UP:
+        msg = NULL;
+        delay = portMAX_DELAY;
+        break;
+      default:
+        break;
     }
-    /* Now we are connected */
-    while(connected) {
-      do {
-        UART_OUTPUT("PPP: online ... %u\n\r", (unsigned)xTaskGetTickCount());
-      } while(pdFALSE == xTaskNotifyWait(0, ~0, &connected, portMAX_DELAY));
-    }
+    if(msg)
+      UART_OUTPUT(msg);
   }
 }
 /* }}} */
@@ -896,6 +901,8 @@ void inmate_main(void)
   unsigned i;
 
   prvSetupHardware();
+  event_status = xEventGroupCreate();
+  xEventGroupSetBits(event_status, EVBIT_PPP_IS_DOWN);
   uart_mutex = xSemaphoreCreateMutex();
   configASSERT(NULL != uart_mutex);
   ser_rx_queue = xQueueCreate(LWIP_MEM_ALIGN_SIZE(TCP_SND_BUF), sizeof(uint8_t));
@@ -904,7 +911,7 @@ void inmate_main(void)
   sio_queue_register(ser_dev, ser_rx_queue);
   /* initialise lwIP. This creates a new thread, tcpip_thread, that
    * communicates with the pppInputThread (see below) */
-  tcpip_init(tcpip_init_done_cb, &tcpip_done_flag);
+  tcpip_init(tcpip_init_done_cb, NULL);
 
   if(1) xTaskCreate( echoTcpTask, /* The function that implements the task. */
       "echot", /* The text name assigned to the task - for debug only; not used by the kernel. */
