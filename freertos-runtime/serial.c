@@ -55,6 +55,7 @@ sio_fd_t serial_open(void)
 	unsigned divisor = DIV_ROUND_CLOSEST(UART_CLK, 16 * UART_BAUDRATE);
   sio_fd_t uart_base = (void*)UART7_BASE;
 
+  /* Switch on clock network for uart7 inside the CCU (clock control unit) */
   mmio_write32(UART_CLOCK_REG,
       mmio_read32(UART_CLOCK_REG) |
       (1 << UART_GATE_NR));
