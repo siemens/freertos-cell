@@ -80,12 +80,25 @@ struct ppp_mppe_state {
 #define MPPE_BIT_FLUSHED	MPPE_BIT_A
 #define MPPE_BIT_ENCRYPTED	MPPE_BIT_D
 
-#define MPPE_BITS(p) ((p)[4] & 0xf0)
-#define MPPE_CCOUNT(p) ((((p)[4] & 0x0f) << 8) + (p)[5])
+#define MPPE_BITS(p) ((p)[0] & 0xf0)
+#define MPPE_CCOUNT(p) ((((p)[0] & 0x0f) << 8) + (p)[1])
 #define MPPE_CCOUNT_SPACE 0x1000	/* The size of the ccount space */
 
 #define MPPE_OVHD	2	/* MPPE overhead/packet */
 #define SANITY_MAX	1600	/* Max bogon factor we will tolerate */
+
+static const u8_t sha1_pad1[SHA1_PAD_SIZE] = {
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+static const u8_t sha1_pad2[SHA1_PAD_SIZE] = {
+  0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
+  0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
+  0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2,
+  0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2, 0xf2
+};
 
 /*
  * Key Derivation, from RFC 3078, RFC 3079.
@@ -94,27 +107,12 @@ struct ppp_mppe_state {
 static void get_new_key_from_sha(struct ppp_mppe_state * state)
 {
   sha1_context sha1;
-  /* sha1 is faster when using 64 byte chunks */
-  u8_t pad[64];
-  u8_t i;
 
   sha1_starts(&sha1);
   sha1_update(&sha1, state->master_key, state->keylen);
-
-  /* first padding, 256 bytes of 0x00 */
-  memset(pad, 0x00, sizeof(pad));
-  for (i = 0; i < 4; i++) {
-    sha1_update(&sha1, pad, sizeof(pad));
-  }
-
+  sha1_update(&sha1, (unsigned char *)sha1_pad1, SHA1_PAD_SIZE);
   sha1_update(&sha1, state->session_key, state->keylen);
-
-  /* second padding, 256 bytes of 0xf2 */
-  memset(pad, 0xf2, sizeof(pad));
-  for (i = 0; i < 4; i++) {
-    sha1_update(&sha1, pad, sizeof(pad));
-  }
-
+  sha1_update(&sha1, (unsigned char *)sha1_pad2, SHA1_PAD_SIZE);
   sha1_finish(&sha1, state->sha1_digest);
 }
 
@@ -138,7 +136,7 @@ static void mppe_rekey(struct ppp_mppe_state * state, int initial_key)
 		state->session_key[1] = 0x26;
 		state->session_key[2] = 0x9e;
 	}
-	arc4_crypt(&state->arc4, state->session_key, state->keylen);
+	arc4_setup(&state->arc4, state->session_key, state->keylen);
 }
 
 /*
@@ -370,44 +368,34 @@ void mppe_decomp_reset(void *arg)
 /*
  * Decompress (decrypt) an MPPE packet.
  */
-int
-mppe_decompress(void *arg, unsigned char *ibuf, int isize, unsigned char *obuf,
-		int osize)
+err_t
+mppe_decompress(void *arg, struct pbuf **pb)
 {
 	struct ppp_mppe_state *state = (struct ppp_mppe_state *) arg;
+	struct pbuf *n0 = *pb, *n;
+	u8_t *pl;
 	unsigned ccount;
-	int flushed = MPPE_BITS(ibuf) & MPPE_BIT_FLUSHED;
+	int flushed;
 	int sanity = 0;
 
-	if (isize <= PPP_HDRLEN + MPPE_OVHD) {
+	/* MPPE Header */
+	if (n0->len < MPPE_OVHD) {
 		if (state->debug)
 			PPPDEBUG(LOG_DEBUG,
 			       ("mppe_decompress[%d]: short pkt (%d)\n",
-			       state->unit, isize));
+			       state->unit, n0->len));
 		return ERR_BUF;
 	}
 
-	/*
-	 * Make sure we have enough room to decrypt the packet.
-	 * Note that for our test we only subtract 1 byte whereas in
-	 * mppe_compress() we added 2 bytes (+MPPE_OVHD);
-	 * this is to account for possible PFC.
-	 */
-	if (osize < isize - MPPE_OVHD - 1) {
-		PPPDEBUG(LOG_DEBUG, ("mppe_decompress[%d]: osize too small! "
-		       "(have: %d need: %d)\n", state->unit,
-		       osize, isize - MPPE_OVHD - 1));
-		return ERR_BUF;
-	}
-	osize = isize - MPPE_OVHD - 2;	/* assume no PFC */
-
-	ccount = MPPE_CCOUNT(ibuf);
+	pl = (u8_t*)n0->payload;
+	flushed = MPPE_BITS(pl) & MPPE_BIT_FLUSHED;
+	ccount = MPPE_CCOUNT(pl);
 	if (state->debug >= 7)
 		PPPDEBUG(LOG_DEBUG, ("mppe_decompress[%d]: ccount %d\n",
 		       state->unit, ccount));
 
 	/* sanity checks -- terminate with extreme prejudice */
-	if (!(MPPE_BITS(ibuf) & MPPE_BIT_ENCRYPTED)) {
+	if (!(MPPE_BITS(pl) & MPPE_BIT_ENCRYPTED)) {
 		PPPDEBUG(LOG_DEBUG,
 		       ("mppe_decompress[%d]: ENCRYPTED bit not set!\n",
 		       state->unit));
@@ -495,44 +483,21 @@ mppe_decompress(void *arg, unsigned char *ibuf, int isize, unsigned char *obuf,
 			mppe_rekey(state, 0);
 	}
 
-	/*
-	 * Fill in the first part of the PPP header.  The protocol field
-	 * comes from the decrypted data.
-	 */
-	obuf[0] = PPP_ADDRESS(ibuf);	/* +1 */
-	obuf[1] = PPP_CONTROL(ibuf);	/* +1 */
-	obuf += 2;
-	ibuf += PPP_HDRLEN + MPPE_OVHD;
-	isize -= PPP_HDRLEN + MPPE_OVHD;	/* -6 */
-	/* net osize: isize-4 */
+	/* Hide MPPE header */
+	pbuf_header(n0, -(s16_t)(MPPE_OVHD));
 
-	/*
-	 * Decrypt the first byte in order to check if it is
-	 * a compressed or uncompressed protocol field.
-	 */
-	obuf[0] = ibuf[0];
-	arc4_crypt(&state->arc4, obuf, 1);
-
-	/*
-	 * Do PFC decompression.
-	 * This would be nicer if we were given the actual sk_buff
-	 * instead of a char *.
-	 */
-	if ((obuf[0] & 0x01) != 0) {
-		obuf[1] = obuf[0];
-		obuf[0] = 0;
-		obuf++;
-		osize++;
+	/* Decrypt the packet. */
+	for (n = n0; n != NULL; n = n->next) {
+		arc4_crypt(&state->arc4, (u8_t*)n->payload, n->len);
+		if (n->tot_len == n->len) {
+			break;
+		}
 	}
-
-	/* And finally, decrypt the rest of the packet. */
-	MEMCPY(obuf+1, ibuf+1, isize-1);
-	arc4_crypt(&state->arc4, obuf+1, isize-1);
 
 	/* good packet credit */
 	state->sanity_errors >>= 1;
 
-	return osize;
+	return ERR_OK;
 }
 
 /*

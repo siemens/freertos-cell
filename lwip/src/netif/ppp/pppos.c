@@ -45,7 +45,7 @@
 #include "lwip/tcpip.h"
 #include "lwip/api.h"
 #include "lwip/sio.h"
-#include "lwip/ip.h" /* for ip_input() */
+#include "lwip/ip4.h" /* for ip4_input() */
 
 #include "netif/ppp/ppp_impl.h"
 #include "netif/ppp/pppos.h"
@@ -216,6 +216,7 @@ pppos_write(ppp_pcb *ppp, void *ctx, struct pbuf *p)
   u16_t n;
   u16_t fcs_out;
   err_t err;
+  LWIP_UNUSED_ARG(ppp);
 
   /* Grab an output buffer. */
   nb = pbuf_alloc(PBUF_RAW, 0, PBUF_POOL);
@@ -261,6 +262,7 @@ pppos_netif_output(ppp_pcb *ppp, void *ctx, struct pbuf *pb, u16_t protocol)
   struct pbuf *nb, *p;
   u16_t fcs_out;
   err_t err;
+  LWIP_UNUSED_ARG(ppp);
 
 #if VJ_SUPPORT
   /*
@@ -890,7 +892,7 @@ pppos_netif_input(ppp_pcb *ppp, void *ctx, struct pbuf *p, u16_t protocol)
       PPPDEBUG(LOG_INFO, ("pppos_vjc_comp[%d]: vj_comp in pbuf len=%d\n", ppp->netif->num, p->len));
       ret = vj_uncompress_tcp(&p, &pppos->vj_comp);
       if (ret >= 0) {
-        ip_input(p, pppos->ppp->netif);
+        ip4_input(p, pppos->ppp->netif);
         return ERR_OK;
       }
       /* Something's wrong so drop it. */
@@ -908,7 +910,7 @@ pppos_netif_input(ppp_pcb *ppp, void *ctx, struct pbuf *p, u16_t protocol)
       PPPDEBUG(LOG_INFO, ("pppos_vjc_uncomp[%d]: vj_un in pbuf len=%d\n", ppp->netif->num, p->len));
       ret = vj_uncompress_uncomp(p, &pppos->vj_comp);
       if (ret >= 0) {
-        ip_input(p, pppos->ppp->netif);
+        ip4_input(p, pppos->ppp->netif);
         return ERR_OK;
       }
       /* Something's wrong so drop it. */
