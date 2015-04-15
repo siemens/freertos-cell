@@ -268,6 +268,7 @@ u32_t sys_jiffies( void )
 { 
   TickType_t xTicks = xTaskGetTickCount();
 
-  return ( u32_t )(xTicks / configTICK_RATE_HZ);
+  /* current number of ticks since system boot in units of 10ms */
+  return ( u32_t )(xTicks / (configTICK_RATE_HZ/100));
 }
 
