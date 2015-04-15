@@ -191,6 +191,12 @@
 #if PPP_SUPPORT && !PPP_IPV4_SUPPORT && !PPP_IPV6_SUPPORT
   #error "PPP_SUPPORT needs PPP_IPV4_SUPPORT and/or PPP_IPV6_SUPPORT turned on"
 #endif
+#if PPP_SUPPORT && PPP_IPV4_SUPPORT && !LWIP_IPV4
+  #error "PPP_IPV4_SUPPORT needs LWIP_IPV4 turned on"
+#endif
+#if PPP_SUPPORT && PPP_IPV6_SUPPORT && !LWIP_IPV6
+  #error "PPP_IPV6_SUPPORT needs LWIP_IPV6 turned on"
+#endif
 #if !LWIP_ETHERNET && (LWIP_ARP || PPPOE_SUPPORT)
   #error "LWIP_ETHERNET needs to be turned on for LWIP_ARP or PPPOE_SUPPORT"
 #endif
@@ -313,10 +319,12 @@ lwip_init(void)
   memp_init();
   pbuf_init();
   netif_init();
+#if LWIP_IPV4
   ip_init();
 #if LWIP_ARP
   etharp_init();
 #endif /* LWIP_ARP */
+#endif /* LWIP_IPV4 */
 #if LWIP_RAW
   raw_init();
 #endif /* LWIP_RAW */
