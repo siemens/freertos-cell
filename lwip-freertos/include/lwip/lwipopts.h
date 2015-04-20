@@ -73,15 +73,17 @@
 
 #define MEM_SIZE (128<<10)
 #define TCP_MSS                 ((MSS_MAX / MEM_ALIGNMENT) * MEM_ALIGNMENT)
+#if 0 /* Over PPP this settings are not optimal */
 #define TCP_WND                 ((0xffffU / TCP_MSS) * TCP_MSS)
 #define TCP_SND_BUF             TCP_WND
 #define TCP_QUEUE_OOSEQ         1
+// FIXME Check if this setting is necessary
+#define TCP_OVERSIZE                    0
+#endif
 
 //#define TCP_SND_QUEUELEN                (4 * (TCP_SND_BUF)/(TCP_MSS))
 #define MEMP_NUM_TCP_PCB                10
 
-// FIXME Check if this setting is necessary
-#define TCP_OVERSIZE                    0
 // Do not use this feature if the whole stacks runs in zero-copy mode
 #define LWIP_NETIF_TX_SINGLE_PBUF 0
 
