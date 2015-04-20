@@ -905,7 +905,7 @@ void inmate_main(void)
   xEventGroupSetBits(event_status, EVBIT_PPP_IS_DOWN);
   uart_mutex = xSemaphoreCreateMutex();
   configASSERT(NULL != uart_mutex);
-  ser_rx_queue = xQueueCreate(LWIP_MEM_ALIGN_SIZE(TCP_SND_BUF), sizeof(uint8_t));
+  ser_rx_queue = xQueueCreate(LWIP_MEM_ALIGN_SIZE(2*TCP_WND), sizeof(uint8_t));
   configASSERT(NULL != ser_rx_queue);
   sio_timeout_set(ser_dev, 3);
   sio_queue_register(ser_dev, ser_rx_queue);
