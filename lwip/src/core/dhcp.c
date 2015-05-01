@@ -108,13 +108,6 @@
 
 #define REBOOT_TRIES 2
 
-#if LWIP_DHCP_GET_NTP_SRV
-/** This function must exist, in other to add offered NTP servers to
- * the NTP (or SNTP) engine.
- * See LWIP_DHCP_MAX_NTP_SERVERS */
-extern void dhcp_set_ntp_servers(u8_t num_ntp_servers, const ip4_addr_t* ntp_server_addrs);
-#endif /* LWIP_DHCP_GET_NTP_SRV */
-
 /** Option handling: options are parsed in dhcp_parse_reply
  * and saved in an array where other functions can load them from.
  * This might be moved into the struct dhcp (not necessarily since
@@ -356,7 +349,7 @@ dhcp_select(struct netif *netif)
  * The DHCP timer that checks for lease renewal/rebind timeouts.
  */
 void
-dhcp_coarse_tmr()
+dhcp_coarse_tmr(void)
 {
   struct netif *netif = netif_list;
   LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE, ("dhcp_coarse_tmr()\n"));
@@ -394,7 +387,7 @@ dhcp_coarse_tmr()
  * This timer checks whether an outstanding DHCP request is timed out.
  */
 void
-dhcp_fine_tmr()
+dhcp_fine_tmr(void)
 {
   struct netif *netif = netif_list;
   /* loop through netif's */
@@ -1044,7 +1037,7 @@ dhcp_bind(struct netif *netif)
 
   ip4_addr_copy(gw_addr, dhcp->offered_gw_addr);
   /* gateway address not given? */
-  if (ip4_addr_isany(&gw_addr)) {
+  if (ip4_addr_isany_val(gw_addr)) {
     /* copy network address */
     ip4_addr_get_network(&gw_addr, &dhcp->offered_ip_addr, &sn_mask);
     /* use first host address on network as gateway */
@@ -1825,6 +1818,24 @@ dhcp_option_trailer(struct dhcp *dhcp)
     /* add a fill/padding byte */
     dhcp->msg_out->options[dhcp->options_out_len++] = 0;
   }
+}
+
+/** check if DHCP supplied netif->ip_addr
+ *
+ * @param netif the netif to check
+ * @return 1 if DHCP supplied netif->ip_addr (states BOUND or RENEWING),
+ *         0 otherwise
+ */
+u8_t
+dhcp_supplied_address(struct netif *netif)
+{
+  if ((netif != NULL) && (netif->dhcp != NULL)) {
+    if ((netif->dhcp->state == DHCP_BOUND) ||
+      (netif->dhcp->state == DHCP_RENEWING)) {
+      return 1;
+    }
+  }
+  return 0;
 }
 
 #endif /* LWIP_IPV4 && LWIP_DHCP */

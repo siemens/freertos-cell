@@ -435,8 +435,10 @@ static void ipv6cp_init(ppp_pcb *pcb) {
     f->callbacks = &ipv6cp_callbacks;
     fsm_init(f);
 
+#if 0 /* Not necessary, everything is cleared in ppp_clear() */
     memset(wo, 0, sizeof(*wo));
     memset(ao, 0, sizeof(*ao));
+#endif /* 0 */
 
     wo->accept_local = 1;
     wo->neg_ifaceid = 1;
@@ -1238,7 +1240,9 @@ static void ipv6cp_up(fsm *f) {
 	    ipv6cp_close(f->pcb, "Interface configuration failed");
 	    return;
 	}
+#if DEMAND_SUPPORT
 	sifnpmode(f->pcb, PPP_IPV6, NPMODE_PASS);
+#endif /* DEMAND_SUPPORT */
 
 	ppp_notice("local  LL address %s", llv6_ntoa(go->ourid));
 	ppp_notice("remote LL address %s", llv6_ntoa(ho->hisid));
@@ -1293,7 +1297,9 @@ static void ipv6cp_down(fsm *f) {
     } else
 #endif /* DEMAND_SUPPORT */
     {
+#if DEMAND_SUPPORT
 	sifnpmode(f->pcb, PPP_IPV6, NPMODE_DROP);
+#endif /* DEMAND_SUPPORT */
 	ipv6cp_clear_addrs(f->pcb,
 			   go->ourid,
 			   ho->hisid);
@@ -1387,7 +1393,7 @@ ipv6cp_script(script)
 /*
  * ipv6cp_printpkt - print the contents of an IPV6CP packet.
  */
-static const char *ipv6cp_codenames[] = {
+static const char* const ipv6cp_codenames[] = {
     "ConfReq", "ConfAck", "ConfNak", "ConfRej",
     "TermReq", "TermAck", "CodeRej"
 };

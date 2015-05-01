@@ -244,7 +244,7 @@ snmp_send_trap(s8_t generic_trap, const struct snmp_obj_id *eoid, s32_t specific
       ip_route_get_local_ip(PCB_ISIPV6(trap_msg.pcb), &trap_msg.pcb->local_ip,
         &td->dip, dst_if, dst_ip, &dst_ip_storage);
       if ((dst_if != NULL) && (dst_ip != NULL)) {
-        trap_msg.sip_raw_len = (IP_IS_V6_L(dst_ip) ? 16 : 4);
+        trap_msg.sip_raw_len = (IP_IS_V6_VAL(*dst_ip) ? 16 : 4);
         memcpy(trap_msg.sip_raw, dst_ip, trap_msg.sip_raw_len);
         trap_msg.gen_trap = generic_trap;
         trap_msg.spc_trap = specific_trap;
@@ -404,7 +404,7 @@ snmp_trap_header_sum(struct snmp_msg_trap *m_trap, u16_t vb_len)
   snmp_asn1_enc_length_cnt(thl->pdulen, &thl->pdulenlen);
   tot_len += 1 + thl->pdulenlen;
 
-  thl->comlen = strlen(snmp_community_trap);
+  thl->comlen = (u16_t)strlen(snmp_community_trap);
   snmp_asn1_enc_length_cnt(thl->comlen, &thl->comlenlen);
   tot_len += 1 + thl->comlenlen + thl->comlen;
 
@@ -571,7 +571,7 @@ snmp_trap_header_enc(struct snmp_msg_trap *m_trap, struct pbuf *p)
   ofs += 1;
   snmp_asn1_enc_length(p, ofs, m_trap->thl.comlen);
   ofs += m_trap->thl.comlenlen;
-  snmp_asn1_enc_raw(p, ofs, m_trap->thl.comlen, (u8_t *)&snmp_community_trap[0]);
+  snmp_asn1_enc_raw(p, ofs, m_trap->thl.comlen, (const u8_t *)&snmp_community_trap[0]);
   ofs += m_trap->thl.comlen;
 
   snmp_asn1_enc_type(p, ofs, (SNMP_ASN1_CONTXT | SNMP_ASN1_CONSTR | SNMP_ASN1_PDU_TRAP));

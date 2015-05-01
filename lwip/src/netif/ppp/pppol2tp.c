@@ -136,7 +136,7 @@ ppp_pcb *pppol2tp_create(struct netif *pppif,
   }
 
 #if LWIP_IPV6
-  if (IP_IS_V6_L(ipaddr)) {
+  if (IP_IS_V6_VAL(*ipaddr)) {
     udp = udp_new_ip6();
   } else
 #endif /* LWIP_IPV6 */
@@ -285,13 +285,13 @@ static err_t pppol2tp_connect(ppp_pcb *ppp, void *ctx) {
   ppp_clear(ppp);
 
   lcp_wo = &ppp->lcp_wantoptions;
-  lcp_wo->mru = 1500; /* FIXME: MTU depends if we support IP fragmentation or not */
+  lcp_wo->mru = PPPOL2TP_DEFMRU;
   lcp_wo->neg_asyncmap = 0;
   lcp_wo->neg_pcompression = 0;
   lcp_wo->neg_accompression = 0;
 
   lcp_ao = &ppp->lcp_allowoptions;
-  lcp_ao->mru = 1500; /* FIXME: MTU depends if we support IP fragmentation or not */
+  lcp_ao->mru = PPPOL2TP_DEFMRU;
   lcp_ao->neg_asyncmap = 0;
   lcp_ao->neg_pcompression = 0;
   lcp_ao->neg_accompression = 0;
@@ -443,7 +443,7 @@ static void pppol2tp_input(void *arg, struct udp_pcb *pcb, struct pbuf *p, const
   /* printf("HLEN = %d\n", hlen); */
 
   /* skip L2TP header */
-  if (pbuf_header(p, -hlen) != 0) {
+  if (pbuf_header(p, -(s16_t)hlen) != 0) {
     goto free_and_return;
   }
 
@@ -475,9 +475,11 @@ static void pppol2tp_input(void *arg, struct udp_pcb *pcb, struct pbuf *p, const
    * RFC 2661 does not specify whether the PPP frame in the L2TP payload should
    * have a HDLC header or not. We handle both cases for compatibility.
    */
-  GETSHORT(hflags, inp);
-  if (hflags == 0xff03) {
-    pbuf_header(p, -(s16_t)2);
+  if (p->len >= 2) {
+    GETSHORT(hflags, inp);
+    if (hflags == 0xff03) {
+      pbuf_header(p, -(s16_t)2);
+    }
   }
   /* Dispatch the packet thereby consuming it. */
   ppp_input(l2tp->ppp, p);
@@ -510,7 +512,7 @@ static void pppol2tp_dispatch_control_packet(pppol2tp_pcb *l2tp, u16_t port, str
   }
 
   /* ZLB packets */
-  if (p->len == 0) {
+  if (p->tot_len == 0) {
     return;
   }
 
@@ -657,7 +659,7 @@ skipavp:
 nextavp:
     /* printf("AVP Found, vendor=%d, attribute=%d, len=%d\n", vendorid, attributetype, avplen); */
     /* next AVP */
-    if (pbuf_header(p, -avplen - sizeof(avpflags) - sizeof(vendorid) - sizeof(attributetype) ) != 0) {
+    if (pbuf_header(p, -(s16_t)(avplen + sizeof(avpflags) + sizeof(vendorid) + sizeof(attributetype)) ) != 0) {
       return;
     }
   }
@@ -1126,7 +1128,7 @@ static err_t pppol2tp_xmit(pppol2tp_pcb *l2tp, struct pbuf *pb) {
   }
 
   /* make room for L2TP header - should not fail */
-  if (pbuf_header(pb, PPPOL2TP_OUTPUT_DATA_HEADER_LEN) != 0) {
+  if (pbuf_header(pb, (s16_t)PPPOL2TP_OUTPUT_DATA_HEADER_LEN) != 0) {
     /* bail out */
     PPPDEBUG(LOG_ERR, ("pppol2tp: pppol2tp_pcb: could not allocate room for L2TP header\n"));
     LINK_STATS_INC(link.lenerr);

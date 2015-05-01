@@ -997,10 +997,10 @@ lwip_netconn_do_delconn(struct api_msg_msg *msg)
     }
   }
 #else /* LWIP_NETCONN_FULLDUPLEX */
-  if (((msg->conn->state != NETCONN_NONE) &&
-       (msg->conn->state != NETCONN_LISTEN) &&
-       (msg->conn->state != NETCONN_CONNECT)) ||
-      ((msg->conn->state == NETCONN_CONNECT) && !IN_NONBLOCKING_CONNECT(msg->conn))) {
+  if (((state != NETCONN_NONE) &&
+       (state != NETCONN_LISTEN) &&
+       (state != NETCONN_CONNECT)) ||
+      ((state == NETCONN_CONNECT) && !IN_NONBLOCKING_CONNECT(msg->conn))) {
     /* This means either a blocking write or blocking connect is running
        (nonblocking write returns and sets state to NONE) */
     msg->err = ERR_INPROGRESS;
@@ -1008,7 +1008,7 @@ lwip_netconn_do_delconn(struct api_msg_msg *msg)
 #endif /* LWIP_NETCONN_FULLDUPLEX */
   {
     LWIP_ASSERT("blocking connect in progress",
-      (msg->conn->state != NETCONN_CONNECT) || IN_NONBLOCKING_CONNECT(msg->conn));
+      (state != NETCONN_CONNECT) || IN_NONBLOCKING_CONNECT(msg->conn));
     msg->err = ERR_OK;
     /* Drain and delete mboxes */
     netconn_drain(msg->conn);
@@ -1419,7 +1419,7 @@ static err_t
 lwip_netconn_do_writemore(struct netconn *conn  WRITE_DELAYED_PARAM)
 {
   err_t err;
-  void *dataptr;
+  const void *dataptr;
   u16_t len, available;
   u8_t write_finished = 0;
   size_t diff;
@@ -1454,7 +1454,7 @@ lwip_netconn_do_writemore(struct netconn *conn  WRITE_DELAYED_PARAM)
   } else
 #endif /* LWIP_SO_SNDTIMEO */
   {
-    dataptr = (u8_t*)conn->current_msg->msg.w.dataptr + conn->write_offset;
+    dataptr = (const u8_t*)conn->current_msg->msg.w.dataptr + conn->write_offset;
     diff = conn->current_msg->msg.w.len - conn->write_offset;
     if (diff > 0xffffUL) { /* max_u16_t */
       len = 0xffff;

@@ -198,16 +198,20 @@ void mppe_comp_reset(ppp_pcb *pcb, ppp_mppe_state *state)
 err_t
 mppe_compress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb, u16_t protocol)
 {
-	struct pbuf *np, *n;
+	struct pbuf *n;
 	u8_t *pl;
 
-	/* FIXME: try to use pbuf_header() here! */
-	np = pbuf_alloc(PBUF_RAW, MPPE_OVHD + sizeof(protocol), PBUF_RAM);
-	if (!np) {
-	  return ERR_MEM;
+	if (pbuf_header(*pb, (s16_t)(MPPE_OVHD + sizeof(protocol))) == 0) {
+		pbuf_ref(*pb);
+	} else {
+		struct pbuf *np = pbuf_alloc(PBUF_RAW, MPPE_OVHD + sizeof(protocol), PBUF_RAM);
+		if (!np) {
+			return ERR_MEM;
+		}
+		pbuf_chain(np, *pb);
+		*pb = np;
 	}
-	pbuf_chain(np, *pb);
-	pl = (u8_t*)np->payload;
+	pl = (u8_t*)(*pb)->payload;
 
 	state->ccount = (state->ccount + 1) % MPPE_CCOUNT_SPACE;
 	PPPDEBUG(LOG_DEBUG, ("mppe_compress[%d]: ccount %d\n", pcb->netif->num, state->ccount));
@@ -229,11 +233,13 @@ mppe_compress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb, u16_t proto
 	state->bits &= ~MPPE_BIT_FLUSHED;	/* reset for next xmit */
 	pl += MPPE_OVHD;
 
-	/* Add and encrypt protocol */
+	/* Add protocol */
 	/* FIXME: add PFC support */
 	pl[0] = protocol >> 8;
 	pl[1] = protocol;
-	arc4_crypt(&state->arc4, pl, sizeof(protocol));
+
+	/* Hide MPPE header */
+	pbuf_header(*pb, -(s16_t)MPPE_OVHD);
 
 	/* Encrypt packet */
 	for (n = *pb; n != NULL; n = n->next) {
@@ -243,7 +249,9 @@ mppe_compress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb, u16_t proto
 		}
 	}
 
-	*pb = np;
+	/* Reveal MPPE header */
+	pbuf_header(*pb, (s16_t)MPPE_OVHD);
+
 	return ERR_OK;
 }
 
@@ -267,14 +275,14 @@ mppe_decompress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb)
 	u8_t *pl;
 	u16_t ccount;
 	u8_t flushed;
-	u8_t sanity = 0;
 
 	/* MPPE Header */
 	if (n0->len < MPPE_OVHD) {
 		PPPDEBUG(LOG_DEBUG,
 		       ("mppe_decompress[%d]: short pkt (%d)\n",
 		       pcb->netif->num, n0->len));
-		return ERR_BUF;
+		state->sanity_errors += 100;
+		goto sanity_error;
 	}
 
 	pl = (u8_t*)n0->payload;
@@ -289,32 +297,19 @@ mppe_decompress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb)
 		       ("mppe_decompress[%d]: ENCRYPTED bit not set!\n",
 		       pcb->netif->num));
 		state->sanity_errors += 100;
-		sanity = 1;
+		goto sanity_error;
 	}
 	if (!state->stateful && !flushed) {
 		PPPDEBUG(LOG_DEBUG, ("mppe_decompress[%d]: FLUSHED bit not set in "
 		       "stateless mode!\n", pcb->netif->num));
 		state->sanity_errors += 100;
-		sanity = 1;
+		goto sanity_error;
 	}
 	if (state->stateful && ((ccount & 0xff) == 0xff) && !flushed) {
 		PPPDEBUG(LOG_DEBUG, ("mppe_decompress[%d]: FLUSHED bit not set on "
 		       "flag packet!\n", pcb->netif->num));
 		state->sanity_errors += 100;
-		sanity = 1;
-	}
-
-	if (sanity) {
-		if (state->sanity_errors < SANITY_MAX)
-			return ERR_BUF;
-		else
-			/*
-			 * Take LCP down if the peer is sending too many bogons.
-			 * We don't want to do this for a single or just a few
-			 * instances since it could just be due to packet corruption.
-			 */
-			lcp_close(pcb, "Too many MPPE errors");
-			return ERR_BUF;
+		goto sanity_error;
 	}
 
 	/*
@@ -322,6 +317,12 @@ mppe_decompress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb)
 	 */
 
 	if (!state->stateful) {
+		/* Discard late packet */
+		if ((ccount - state->ccount) % MPPE_CCOUNT_SPACE > MPPE_CCOUNT_SPACE / 2) {
+			state->sanity_errors++;
+			goto sanity_error;
+		}
+
 		/* RFC 3078, sec 8.1.  Rekey for every packet. */
 		while (state->ccount != ccount) {
 			mppe_rekey(state, 0);
@@ -339,6 +340,7 @@ mppe_decompress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb)
 				 * Signal the peer to rekey (by sending a CCP Reset-Request).
 				 */
 				state->discard = 1;
+				ccp_resetrequest(pcb);
 				return ERR_BUF;
 			}
 		} else {
@@ -387,26 +389,17 @@ mppe_decompress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb)
 	state->sanity_errors >>= 1;
 
 	return ERR_OK;
-}
 
-#if 0 /* unused */
-/*
- * Incompressible data has arrived (this should never happen!).
- * We should probably drop the link if the protocol is in the range
- * of what should be encrypted.  At the least, we should drop this
- * packet.  (How to do this?)
- */
-void mppe_incomp(ppp_pcb *pcb, ppp_mppe_state *state, unsigned char *ibuf, int icnt)
-{
-	LWIP_UNUSED_ARG(state);
-	LWIP_UNUSED_ARG(icnt);
-
-	if (PPP_PROTOCOL(ibuf) >= 0x0021 && PPP_PROTOCOL(ibuf) <= 0x00fa) {
-		PPPDEBUG(LOG_DEBUG,
-		       ("mppe_incomp[%d]: incompressible (unencrypted) data! "
-		       "(proto %04x)\n", pcb->netif->num, PPP_PROTOCOL(ibuf)));
+sanity_error:
+	if (state->sanity_errors >= SANITY_MAX) {
+		/*
+		 * Take LCP down if the peer is sending too many bogons.
+		 * We don't want to do this for a single or just a few
+		 * instances since it could just be due to packet corruption.
+		 */
+		lcp_close(pcb, "Too many MPPE errors");
 	}
+	return ERR_BUF;
 }
-#endif /* unused */
 
 #endif /* PPP_SUPPORT && MPPE_SUPPORT */

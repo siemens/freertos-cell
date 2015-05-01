@@ -122,11 +122,14 @@ static const struct chap_digest_type* const chap_digests[] = {
  * chap_init - reset to initial state.
  */
 static void chap_init(ppp_pcb *pcb) {
+	LWIP_UNUSED_ARG(pcb);
 
+#if 0 /* Not necessary, everything is cleared in ppp_clear() */
 	memset(&pcb->chap_client, 0, sizeof(chap_client_state));
 #if PPP_SERVER
 	memset(&pcb->chap_server, 0, sizeof(chap_server_state));
 #endif /* PPP_SERVER */
+#endif /* 0 */
 }
 
 /*
@@ -583,7 +586,7 @@ static void chap_protrej(ppp_pcb *pcb) {
 /*
  * chap_print_pkt - print the contents of a CHAP packet.
  */
-static const char *chap_code_names[] = {
+static const char* const chap_code_names[] = {
 	"Challenge", "Response", "Success", "Failure"
 };
 
