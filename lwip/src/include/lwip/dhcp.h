@@ -129,6 +129,9 @@ void dhcp_network_changed(struct netif *netif);
 void dhcp_arp_reply(struct netif *netif, const ip4_addr_t *addr);
 #endif
 
+/** check if DHCP supplied netif->ip_addr */
+u8_t dhcp_supplied_address(struct netif *netif);
+
 /** to be called every minute */
 void dhcp_coarse_tmr(void);
 /** to be called every half second */
@@ -235,6 +238,13 @@ void dhcp_fine_tmr(void);
 #define DHCP_OVERLOAD_FILE 1
 #define DHCP_OVERLOAD_SNAME  2
 #define DHCP_OVERLOAD_SNAME_FILE 3
+
+#if LWIP_DHCP_GET_NTP_SRV
+/** This function must exist, in other to add offered NTP servers to
+ * the NTP (or SNTP) engine.
+ * See LWIP_DHCP_MAX_NTP_SERVERS */
+extern void dhcp_set_ntp_servers(u8_t num_ntp_servers, const ip4_addr_t* ntp_server_addrs);
+#endif /* LWIP_DHCP_GET_NTP_SRV */
 
 #ifdef __cplusplus
 }

@@ -164,7 +164,6 @@ typedef struct ppp_mppe_state {
 	u16_t sanity_errors;        /* take down LCP if too many */
 	unsigned int stateful  :1;  /* stateful mode flag */
 	unsigned int discard   :1;  /* stateful mode packet loss flag */
-	unsigned int           :6;  /* 6 bit of padding to round out to 8 bits */
 } ppp_mppe_state;
 
 void mppe_set_key(ppp_pcb *pcb, ppp_mppe_state *state, u8_t *key);
@@ -173,9 +172,6 @@ void mppe_comp_reset(ppp_pcb *pcb, ppp_mppe_state *state);
 err_t mppe_compress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb, u16_t protocol);
 void mppe_decomp_reset(ppp_pcb *pcb, ppp_mppe_state *state);
 err_t mppe_decompress(ppp_pcb *pcb, ppp_mppe_state *state, struct pbuf **pb);
-#if 0 /* unused */
-void mppe_incomp(ppp_pcb *pcb, ppp_mppe_state *state, unsigned char *ibuf, int icnt);
-#endif /* unused */
 
 #endif /* MPPE_H */
 #endif /* PPP_SUPPORT && MPPE_SUPPORT */

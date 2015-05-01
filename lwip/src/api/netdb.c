@@ -92,6 +92,7 @@ lwip_gethostbyname(const char *name)
   HOSTENT_STORAGE char *s_aliases;
   HOSTENT_STORAGE ip_addr_t s_hostent_addr;
   HOSTENT_STORAGE ip_addr_t *s_phostent_addr[2];
+  HOSTENT_STORAGE char s_hostname[DNS_MAX_NAME_LENGTH + 1];
 
   /* query host IP address */
   err = netconn_gethostbyname(name, &addr);
@@ -105,7 +106,9 @@ lwip_gethostbyname(const char *name)
   s_hostent_addr = addr;
   s_phostent_addr[0] = &s_hostent_addr;
   s_phostent_addr[1] = NULL;
-  s_hostent.h_name = (char*)name;
+  strncpy(s_hostname, name, DNS_MAX_NAME_LENGTH);
+  s_hostname[DNS_MAX_NAME_LENGTH] = 0;
+  s_hostent.h_name = s_hostname;
   s_aliases = NULL;
   s_hostent.h_aliases = &s_aliases;
   s_hostent.h_addrtype = AF_INET;
@@ -265,7 +268,7 @@ lwip_getaddrinfo(const char *nodename, const char *servname,
   err_t err;
   ip_addr_t addr;
   struct addrinfo *ai;
-  struct sockaddr_in *sa = NULL;
+  struct sockaddr_storage *sa = NULL;
   int port_nr = 0;
   size_t total_size;
   size_t namelen = 0;
@@ -318,23 +321,24 @@ lwip_getaddrinfo(const char *nodename, const char *servname,
     return EAI_MEMORY;
   }
   memset(ai, 0, total_size);
-  if (IP_IS_V6(addr)) {
+  sa = (struct sockaddr_storage *)(void*)((u8_t*)ai + sizeof(struct addrinfo));
+  if (IP_IS_V6_VAL(addr)) {
 #if LWIP_IPV6
-    struct sockaddr_in6 *sa6 = (struct sockaddr_in6*)((u8_t*)ai + sizeof(struct addrinfo));
+    struct sockaddr_in6 *sa6 = (struct sockaddr_in6*)sa;
     /* set up sockaddr */
     inet6_addr_from_ip6addr(&sa6->sin6_addr, ip_2_ip6(&addr));
-    sa->sin_family = AF_INET6;
-    sa->sin_len = sizeof(struct sockaddr_in6);
-    sa->sin_port = htons((u16_t)port_nr);
+    sa6->sin6_family = AF_INET6;
+    sa6->sin6_len = sizeof(struct sockaddr_in6);
+    sa6->sin6_port = htons((u16_t)port_nr);
 #endif /* LWIP_IPV6 */
   } else {
 #if LWIP_IPV4
-    struct sockaddr_in *sa = (struct sockaddr_in*)((u8_t*)ai + sizeof(struct addrinfo));
+    struct sockaddr_in *sa4 = (struct sockaddr_in*)sa;
     /* set up sockaddr */
-    inet_addr_from_ipaddr(&sa->sin_addr, ip_2_ip4(&addr));
-    sa->sin_family = AF_INET;
-    sa->sin_len = sizeof(struct sockaddr_in);
-    sa->sin_port = htons((u16_t)port_nr);
+    inet_addr_from_ipaddr(&sa4->sin_addr, ip_2_ip4(&addr));
+    sa4->sin_family = AF_INET;
+    sa4->sin_len = sizeof(struct sockaddr_in);
+    sa4->sin_port = htons((u16_t)port_nr);
 #endif /* LWIP_IPV4 */
   }
 

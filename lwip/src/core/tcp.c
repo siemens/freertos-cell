@@ -63,7 +63,7 @@
    "The Dynamic and/or Private Ports are those from 49152 through 65535" */
 #define TCP_LOCAL_PORT_RANGE_START        0xc000
 #define TCP_LOCAL_PORT_RANGE_END          0xffff
-#define TCP_ENSURE_LOCAL_PORT_RANGE(port) (((port) & ~TCP_LOCAL_PORT_RANGE_START) + TCP_LOCAL_PORT_RANGE_START)
+#define TCP_ENSURE_LOCAL_PORT_RANGE(port) ((u16_t)(((port) & ~TCP_LOCAL_PORT_RANGE_START) + TCP_LOCAL_PORT_RANGE_START))
 #endif
 
 #if LWIP_TCP_KEEPALIVE
@@ -340,7 +340,7 @@ tcp_shutdown(struct tcp_pcb *pcb, int shut_rx, int shut_tx)
     case SYN_RCVD:
     case ESTABLISHED:
     case CLOSE_WAIT:
-      return tcp_close_shutdown(pcb, shut_rx);
+      return tcp_close_shutdown(pcb, (u8_t)shut_rx);
     default:
       /* Not (yet?) connected, cannot shutdown the TX side as that would bring us
         into CLOSED state, where the PCB is deallocated. */
@@ -1845,7 +1845,7 @@ tcp_netif_ipv4_addr_changed_pcblist(const ip4_addr_t* old_addr, struct tcp_pcb* 
   pcb = pcb_list;
   while (pcb != NULL) {
     /* PCB bound to current local interface address? */
-    if (!IP_IS_V6_L(&pcb->local_ip) && ip4_addr_cmp(ip_2_ip4(&pcb->local_ip), old_addr)
+    if (!IP_IS_V6_VAL(pcb->local_ip) && ip4_addr_cmp(ip_2_ip4(&pcb->local_ip), old_addr)
 #if LWIP_AUTOIP
       /* connections to link-local addresses must persist (RFC3927 ch. 1.9) */
       && !ip4_addr_islinklocal(ip_2_ip4(&pcb->local_ip))
@@ -1879,7 +1879,7 @@ void tcp_netif_ipv4_addr_changed(const ip4_addr_t* old_addr, const ip4_addr_t* n
     for (lpcb = tcp_listen_pcbs.listen_pcbs; lpcb != NULL; lpcb = next) {
       next = lpcb->next;
       /* Is this an IPv4 pcb? */
-      if (!IP_IS_V6_L(&lpcb->local_ip)) {
+      if (!IP_IS_V6_VAL(lpcb->local_ip)) {
         /* PCB bound to current local interface address? */
         if ((!(ip4_addr_isany(ip_2_ip4(&lpcb->local_ip)))) &&
             (ip4_addr_cmp(ip_2_ip4(&lpcb->local_ip), old_addr))) {

@@ -341,7 +341,7 @@ ppp_close(ppp_pcb *pcb, u8_t nocarrier)
  * Return 0 on success, an error code on failure.
  */
 err_t ppp_free(ppp_pcb *pcb) {
-  int err;
+  err_t err;
   if (pcb->phase != PPP_PHASE_DEAD) {
     return ERR_CONN;
   }
@@ -712,16 +712,17 @@ void ppp_input(ppp_pcb *pcb, struct pbuf *pb) {
     const char *pname;
 #endif /* PPP_DEBUG && PPP_PROTOCOLNAME */
 
+  if (pb->len < 2) {
+    PPPDEBUG(LOG_ERR, ("ppp_input[%d]: packet too short\n", pcb->netif->num));
+    goto drop;
+  }
   protocol = (((u8_t *)pb->payload)[0] << 8) | ((u8_t*)pb->payload)[1];
 
 #if PRINTPKT_SUPPORT
   ppp_dump_packet("rcvd", (unsigned char *)pb->payload, pb->len);
 #endif /* PRINTPKT_SUPPORT */
 
-  if(pbuf_header(pb, -(s16_t)sizeof(protocol))) {
-    LWIP_ASSERT("pbuf_header failed\n", 0);
-    goto drop;
-  }
+  pbuf_header(pb, -(s16_t)sizeof(protocol));
 
   LINK_STATS_INC(link.recv);
   snmp_inc_ifinucastpkts(pcb->netif);
@@ -760,6 +761,26 @@ void ppp_input(ppp_pcb *pcb, struct pbuf *pb) {
   }
 
 #if CCP_SUPPORT
+#if MPPE_SUPPORT
+  /*
+   * MPPE is required and unencrypted data has arrived (this
+   * should never happen!). We should probably drop the link if
+   * the protocol is in the range of what should be encrypted.
+   * At the least, we drop this packet.
+   */
+  if (pcb->settings.require_mppe && (0
+#if PPP_IPV4_SUPPORT
+       || protocol == PPP_IP
+#endif /* PPP_IPV4_SUPPORT */
+#if PPP_IPV6_SUPPORT
+       || protocol == PPP_IPV6
+#endif /* PPP_IPV6_SUPPORT */
+       )) {
+    PPPDEBUG(LOG_ERR, ("ppp_input[%d]: MPPE required, received unencrypted data!\n", pcb->netif->num));
+    goto drop;
+  }
+#endif /* MPPE_SUPPORT */
+
   if (protocol == PPP_COMP) {
     u8_t *pl;
 
@@ -788,10 +809,10 @@ void ppp_input(ppp_pcb *pcb, struct pbuf *pb) {
     pl = (u8_t*)pb->payload;
     if (pl[0] & 0x01) {
       protocol = pl[0];
-      pbuf_header(pb, -1);
+      pbuf_header(pb, -(s16_t)1);
     } else {
       protocol = (pl[0] << 8) | pl[1];
-      pbuf_header(pb, -2);
+      pbuf_header(pb, -(s16_t)2);
     }
   }
 #endif /* CCP_SUPPORT */
@@ -881,10 +902,7 @@ void ppp_input(ppp_pcb *pcb, struct pbuf *pb) {
 #endif /* PPP_PROTOCOLNAME */
         ppp_warn("Unsupported protocol 0x%x received", protocol);
 #endif /* PPP_DEBUG */
-        if (pbuf_header(pb, (s16_t)sizeof(protocol))) {
-          LWIP_ASSERT("pbuf_header failed\n", 0);
-          goto drop;
-        }
+        pbuf_header(pb, (s16_t)sizeof(protocol));
         lcp_sprotrej(pcb, (u8_t*)pb->payload, pb->len);
       }
       break;
@@ -1247,6 +1265,7 @@ int sif6down(ppp_pcb *pcb) {
 }
 #endif /* PPP_IPV6_SUPPORT */
 
+#if DEMAND_SUPPORT
 /*
  * sifnpmode - Set the mode for handling packets for a given NP.
  */
@@ -1256,6 +1275,7 @@ int sifnpmode(ppp_pcb *pcb, int proto, enum NPmode mode) {
   LWIP_UNUSED_ARG(mode);
   return 0;
 }
+#endif /* DEMAND_SUPPORT */
 
 /*
  * netif_set_mtu - set the MTU on the PPP network interface.
@@ -1263,6 +1283,7 @@ int sifnpmode(ppp_pcb *pcb, int proto, enum NPmode mode) {
 void netif_set_mtu(ppp_pcb *pcb, int mtu) {
 
   pcb->netif->mtu = mtu;
+  PPPDEBUG(LOG_INFO, ("netif_set_mtu[%d]: mtu=%d\n", pcb->netif->num, mtu));
 }
 
 /*

@@ -611,8 +611,10 @@ static void ipcp_init(ppp_pcb *pcb) {
      */
     f->maxnakloops = 100;
 
+#if 0 /* Not necessary, everything is cleared in ppp_clear() */
     memset(wo, 0, sizeof(*wo));
     memset(ao, 0, sizeof(*ao));
+#endif /* 0 */
 
     wo->neg_addr = wo->old_addrs = 1;
 #if VJ_SUPPORT
@@ -2048,7 +2050,9 @@ static void ipcp_up(fsm *f) {
 	    return;
 	}
 #endif
+#if DEMAND_SUPPORT
 	sifnpmode(pcb, PPP_IP, NPMODE_PASS);
+#endif /* DEMAND_SUPPORT */
 
 #if 0 /* UNUSED */
 	/* assign a default route through the interface if required */
@@ -2145,7 +2149,9 @@ static void ipcp_down(fsm *f) {
     } else
 #endif /* DEMAND_SUPPORT */
     {
+#if DEMAND_SUPPORT
 	sifnpmode(pcb, PPP_IP, NPMODE_DROP);
+#endif /* DEMAND_SUPPORT */
 	sifdown(pcb);
 	ipcp_clear_addrs(pcb, go->ouraddr,
 			 ho->hisaddr, 0);
@@ -2215,7 +2221,7 @@ create_resolv(peerdns1, peerdns2)
 /*
  * ipcp_printpkt - print the contents of an IPCP packet.
  */
-static const char *ipcp_codenames[] = {
+static const char* const ipcp_codenames[] = {
     "ConfReq", "ConfAck", "ConfNak", "ConfRej",
     "TermReq", "TermAck", "CodeRej"
 };

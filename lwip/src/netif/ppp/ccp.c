@@ -368,20 +368,19 @@ setdeflate(argv)
 static void ccp_init(ppp_pcb *pcb) {
     fsm *f = &pcb->ccp_fsm;
     ccp_options *wo = &pcb->ccp_wantoptions;
-    ccp_options *go = &pcb->ccp_gotoptions;
     ccp_options *ao = &pcb->ccp_allowoptions;
-    ccp_options *ho = &pcb->ccp_hisoptions;
 
     f->pcb = pcb;
     f->protocol = PPP_CCP;
     f->callbacks = &ccp_callbacks;
     fsm_init(f);
 
-    /* FIXME: useless, everything is cleared in ppp_clear() */
+#if 0 /* Not necessary, everything is cleared in ppp_clear() */
     memset(wo, 0, sizeof(*wo));
     memset(go, 0, sizeof(*go));
     memset(ao, 0, sizeof(*ao));
     memset(ho, 0, sizeof(*ho));
+#endif /* 0 */
 
 #if DEFLATE_SUPPORT
     wo->deflate = 1;
@@ -411,7 +410,7 @@ static void ccp_init(ppp_pcb *pcb) {
 		    (pcb->settings.refuse_mppe_40 ? 0 : MPPE_OPT_40)
 		  | (pcb->settings.refuse_mppe_128 ? 0 : MPPE_OPT_128);
     }
-#endif
+#endif /* MPPE_SUPPORT */
 }
 
 /*
@@ -1513,7 +1512,7 @@ static void ccp_down(fsm *f) {
 /*
  * Print the contents of a CCP packet.
  */
-static const char *ccp_codenames[] = {
+static const char* const ccp_codenames[] = {
     "ConfReq", "ConfAck", "ConfNak", "ConfRej",
     "TermReq", "TermAck", "CodeRej",
     NULL, NULL, NULL, NULL, NULL, NULL,
@@ -1700,6 +1699,29 @@ static void ccp_datainput(ppp_pcb *pcb, u_char *pkt, int len) {
     }
 }
 #endif /* PPP_DATAINPUT */
+
+/*
+ * We have received a packet that the decompressor failed to
+ * decompress. Issue a reset-request.
+ */
+void ccp_resetrequest(ppp_pcb *pcb) {
+    fsm *f = &pcb->ccp_fsm;
+
+    if (f->state != PPP_FSM_OPENED)
+	return;
+
+    /*
+     * Send a reset-request to reset the peer's compressor.
+     * We don't do that if we are still waiting for an
+     * acknowledgement to a previous reset-request.
+     */
+    if (!(pcb->ccp_localstate & RACK_PENDING)) {
+	fsm_sdata(f, CCP_RESETREQ, f->reqid = ++f->id, NULL, 0);
+	TIMEOUT(ccp_rack_timeout, f, RACKTIMEOUT);
+	pcb->ccp_localstate |= RACK_PENDING;
+    } else
+	pcb->ccp_localstate |= RREQ_REPEAT;
+}
 
 /*
  * Timeout waiting for reset-ack.

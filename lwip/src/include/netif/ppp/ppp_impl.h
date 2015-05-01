@@ -64,14 +64,6 @@
 #endif /* PPP_USE_PBUF_RAM */
 
 /*
- * Limits.
- */
-#define MAXWORDLEN	1024	/* max length of word in file (incl null) */
-#define MAXARGS		1	/* max # args to a command */
-#define MAXNAMELEN	256	/* max length of hostname or name for auth */
-#define MAXSECRETLEN	256	/* max length of password or secret */
-
-/*
  * The basic PPP frame.
  */
 #define PPP_ADDRESS(p)	(((u_char *)(p))[0])
@@ -462,7 +454,9 @@ int sif6up(ppp_pcb *pcb);
 int sif6down (ppp_pcb *pcb);
 #endif /* PPP_IPV6_SUPPORT */
 
+#if DEMAND_SUPPORT
 int sifnpmode(ppp_pcb *pcb, int proto, enum NPmode mode);
+#endif /* DEMAND_SUPPORt */
 
 void netif_set_mtu(ppp_pcb *pcb, int mtu);
 int netif_get_mtu(ppp_pcb *pcb);
