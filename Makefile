@@ -1,6 +1,6 @@
 .PHONY: clean all
 
-src = $(shell pwd)
+src = $(CURDIR)
 
 CROSS_COMPILE ?= arm-linux-gnueabihf-
 
