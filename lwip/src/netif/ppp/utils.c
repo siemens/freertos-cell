@@ -58,7 +58,7 @@
 #endif
 #endif /* UNUSED */
 
-//#include <ctype.h>  /* isdigit() */
+#include <ctype.h>  /* isdigit() */
 
 #include "netif/ppp/ppp_impl.h"
 
