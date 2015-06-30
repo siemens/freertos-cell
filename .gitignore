@@ -1,0 +1,4 @@
+*.[ado]
+.*.swp
+freertos-demo.elf
+freertos-demo.bin
