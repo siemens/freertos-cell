@@ -136,7 +136,7 @@ tcp_input(struct pbuf *p, struct netif *inp)
   /* Don't even process incoming broadcasts/multicasts. */
   if (
 #if LWIP_IPV4
-      (!ip_current_is_v6() && ip_addr_isbroadcast(ip_current_dest_addr(), inp)) ||
+      (!ip_current_is_v6() && ip_addr_isbroadcast(ip_current_dest_addr(), ip_current_netif())) ||
 #endif /* LWIP_IPV4 */
        ip_addr_ismulticast(ip_current_dest_addr())) {
     TCP_STATS_INC(tcp.proterr);
@@ -1338,7 +1338,7 @@ tcp_receive(struct tcp_pcb *pcb)
           if (TCPH_FLAGS(inseg.tcphdr) & TCP_FIN) {
             /* Must remove the FIN from the header as we're trimming 
              * that byte of sequence-space from the packet */
-            TCPH_FLAGS_SET(inseg.tcphdr, TCPH_FLAGS(inseg.tcphdr) &~ TCP_FIN);
+            TCPH_FLAGS_SET(inseg.tcphdr, TCPH_FLAGS(inseg.tcphdr) & ~(unsigned int)TCP_FIN);
           }
           /* Adjust length of segment to fit in the window. */
           inseg.len = pcb->rcv_wnd;
@@ -1593,7 +1593,7 @@ tcp_receive(struct tcp_pcb *pcb)
                     if (TCPH_FLAGS(next->next->tcphdr) & TCP_FIN) {
                       /* Must remove the FIN from the header as we're trimming 
                        * that byte of sequence-space from the packet */
-                      TCPH_FLAGS_SET(next->next->tcphdr, TCPH_FLAGS(next->next->tcphdr) &~ TCP_FIN);
+                      TCPH_FLAGS_SET(next->next->tcphdr, TCPH_FLAGS(next->next->tcphdr) & ~TCP_FIN);
                     }
                     /* Adjust length of segment to fit in the window. */
                     next->next->len = (u16_t)(pcb->rcv_nxt + pcb->rcv_wnd - seqno);

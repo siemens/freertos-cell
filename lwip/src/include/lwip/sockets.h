@@ -71,22 +71,19 @@ struct sockaddr_in {
 
 #if LWIP_IPV6
 struct sockaddr_in6 {
-  u8_t            sin6_len;      /* length of this structure */
-  sa_family_t     sin6_family;   /* AF_INET6                 */
-  in_port_t       sin6_port;     /* Transport layer port #   */
-  u32_t           sin6_flowinfo; /* IPv6 flow information    */
-  struct in6_addr sin6_addr;     /* IPv6 address             */
+  u8_t            sin6_len;      /* length of this structure    */
+  sa_family_t     sin6_family;   /* AF_INET6                    */
+  in_port_t       sin6_port;     /* Transport layer port #      */
+  u32_t           sin6_flowinfo; /* IPv6 flow information       */
+  struct in6_addr sin6_addr;     /* IPv6 address                */
+  u32_t           sin6_scope_id; /* Set of interfaces for scope */
 };
 #endif /* LWIP_IPV6 */
 
 struct sockaddr {
   u8_t        sa_len;
   sa_family_t sa_family;
-#if LWIP_IPV6
-  char        sa_data[22];
-#else /* LWIP_IPV6 */
   char        sa_data[14];
-#endif /* LWIP_IPV6 */
 };
 
 struct sockaddr_storage {
@@ -95,7 +92,7 @@ struct sockaddr_storage {
   char        s2_data1[2];
   u32_t       s2_data2[3];
 #if LWIP_IPV6
-  u32_t       s2_data3[2];
+  u32_t       s2_data3[3];
 #endif /* LWIP_IPV6 */
 };
 
@@ -253,15 +250,21 @@ struct linger {
 #endif /* LWIP_UDP && LWIP_UDPLITE*/
 
 
-#if LWIP_IGMP
+#if LWIP_MULTICAST_TX_OPTIONS
 /*
  * Options and types for UDP multicast traffic handling
  */
-#define IP_ADD_MEMBERSHIP  3
-#define IP_DROP_MEMBERSHIP 4
 #define IP_MULTICAST_TTL   5
 #define IP_MULTICAST_IF    6
 #define IP_MULTICAST_LOOP  7
+#endif /* LWIP_MULTICAST_TX_OPTIONS */
+
+#if LWIP_IGMP
+/*
+ * Options and types related to multicast membership
+ */
+#define IP_ADD_MEMBERSHIP  3
+#define IP_DROP_MEMBERSHIP 4
 
 typedef struct ip_mreq {
     struct in_addr imr_multiaddr; /* IP multicast address of group */
@@ -421,6 +424,39 @@ struct timeval {
 #endif /* LWIP_TIMEVAL_PRIVATE */
 
 #define lwip_socket_init() /* Compatibility define, no init needed. */
+void lwip_socket_thread_init(void); /* LWIP_NETCONN_SEM_PER_THREAD==1: initialize thread-local semaphore */
+void lwip_socket_thread_cleanup(void); /* LWIP_NETCONN_SEM_PER_THREAD==1: destroy thread-local semaphore */
+
+#if LWIP_COMPAT_SOCKETS == 2
+/* This helps code parsers/code completion by not having the COMPAT functions as defines */
+#define lwip_accept       accept
+#define lwip_bind         bind
+#define lwip_shutdown     shutdown
+#define lwip_getpeername  getpeername
+#define lwip_getsockname  getsockname
+#define lwip_setsockopt   setsockopt
+#define lwip_getsockopt   getsockopt
+#define lwip_close        closesocket
+#define lwip_connect      connect
+#define lwip_listen       listen
+#define lwip_recv         recv
+#define lwip_recvfrom     recvfrom
+#define lwip_send         send
+#define lwip_sendto       sendto
+#define lwip_socket       socket
+#define lwip_select       select
+#define lwip_ioctlsocket  ioctl
+
+#if LWIP_POSIX_SOCKETS_IO_NAMES
+#define lwip_read         read
+#define lwip_write        write
+#undef lwip_close
+#define lwip_close        close
+#define closesocket(s)    close(s)
+#define lwip_fcntl        fcntl
+#define lwip_ioctl        ioctl
+#endif /* LWIP_POSIX_SOCKETS_IO_NAMES */
+#endif /* LWIP_COMPAT_SOCKETS == 2 */
 
 int lwip_accept(int s, struct sockaddr *addr, socklen_t *addrlen);
 int lwip_bind(int s, const struct sockaddr *name, socklen_t namelen);
@@ -447,30 +483,33 @@ int lwip_ioctl(int s, long cmd, void *argp);
 int lwip_fcntl(int s, int cmd, int val);
 
 #if LWIP_COMPAT_SOCKETS
-#define accept(a,b,c)         lwip_accept(a,b,c)
-#define bind(a,b,c)           lwip_bind(a,b,c)
-#define shutdown(a,b)         lwip_shutdown(a,b)
-#define closesocket(s)        lwip_close(s)
-#define connect(a,b,c)        lwip_connect(a,b,c)
-#define getsockname(a,b,c)    lwip_getsockname(a,b,c)
-#define getpeername(a,b,c)    lwip_getpeername(a,b,c)
-#define setsockopt(a,b,c,d,e) lwip_setsockopt(a,b,c,d,e)
-#define getsockopt(a,b,c,d,e) lwip_getsockopt(a,b,c,d,e)
-#define listen(a,b)           lwip_listen(a,b)
-#define recv(a,b,c,d)         lwip_recv(a,b,c,d)
-#define recvfrom(a,b,c,d,e,f) lwip_recvfrom(a,b,c,d,e,f)
-#define send(a,b,c,d)         lwip_send(a,b,c,d)
-#define sendto(a,b,c,d,e,f)   lwip_sendto(a,b,c,d,e,f)
-#define socket(a,b,c)         lwip_socket(a,b,c)
-#define select(a,b,c,d,e)     lwip_select(a,b,c,d,e)
-#define ioctlsocket(a,b,c)    lwip_ioctl(a,b,c)
+#if LWIP_COMPAT_SOCKETS != 2
+#define accept(s,addr,addrlen)                    lwip_accept(s,addr,addrlen)
+#define bind(s,name,namelen)                      lwip_bind(s,name,namelen)
+#define shutdown(s,how)                           lwip_shutdown(s,how)
+#define getpeername(s,name,namelen)               lwip_getpeername(s,name,namelen)
+#define getsockname(s,name,namelen)               lwip_getsockname(s,name,namelen)
+#define setsockopt(s,level,optname,opval,optlen)  lwip_setsockopt(s,level,optname,opval,optlen)
+#define getsockopt(s,level,optname,opval,optlen)  lwip_getsockopt(s,level,optname,opval,optlen)
+#define closesocket(s)                            lwip_close(s)
+#define connect(s,name,namelen)                   lwip_connect(s,name,namelen)
+#define listen(s,backlog)                         lwip_listen(s,backlog)
+#define recv(s,mem,len,flags)                     lwip_recv(s,mem,len,flags)
+#define recvfrom(s,mem,len,flags,from,fromlen)    lwip_recvfrom(s,mem,len,flags,from,fromlen)
+#define send(s,dataptr,size,flags)                lwip_send(s,dataptr,size,flags)
+#define sendto(s,dataptr,size,flags,to,tolen)     lwip_sendto(s,dataptr,size,flags,to,tolen)
+#define socket(domain,type,protocol)              lwip_socket(domain,type,protocol)
+#define select(maxfdp1,readset,writeset,exceptset,timeout)     lwip_select(maxfdp1,readset,writeset,exceptset,timeout)
+#define ioctlsocket(s,cmd,argp)                   lwip_ioctl(s,cmd,argp)
 
 #if LWIP_POSIX_SOCKETS_IO_NAMES
-#define read(a,b,c)           lwip_read(a,b,c)
-#define write(a,b,c)          lwip_write(a,b,c)
-#define close(s)              lwip_close(s)
-#define fcntl(a,b,c)          lwip_fcntl(a,b,c)
+#define read(s,mem,len)                           lwip_read(s,mem,len)
+#define write(s,dataptr,len)                      lwip_write(s,dataptr,len)
+#define close(s)                                  lwip_close(s)
+#define fcntl(s,cmd,val)                          lwip_fcntl(s,cmd,val)
+#define ioctl(s,cmd,argp)                         lwip_ioctl(s,cmd,argp)
 #endif /* LWIP_POSIX_SOCKETS_IO_NAMES */
+#endif /* LWIP_COMPAT_SOCKETS != 2 */
 
 #if LWIP_IPV4 && LWIP_IPV6
 #define inet_ntop(af,src,dst,size) \

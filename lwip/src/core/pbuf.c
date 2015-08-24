@@ -476,7 +476,11 @@ pbuf_realloc(struct pbuf *p, u16_t new_len)
 
   /* shrink allocated memory for PBUF_RAM */
   /* (other types merely adjust their length fields */
-  if ((q->type == PBUF_RAM) && (rem_len != q->len)) {
+  if ((q->type == PBUF_RAM) && (rem_len != q->len)
+#if LWIP_SUPPORT_CUSTOM_PBUF
+      && ((q->flags & PBUF_FLAG_IS_CUSTOM) == 0)
+#endif /* LWIP_SUPPORT_CUSTOM_PBUF */
+     ) {
     /* reallocate and adjust the length of the pbuf that will be split */
     q = (struct pbuf *)mem_trim(q, (u16_t)((u8_t *)q->payload - (u8_t *)q) + rem_len);
     LWIP_ASSERT("mem_trim returned q == NULL", q != NULL);
@@ -1125,13 +1129,11 @@ pbuf_take_at(struct pbuf *buf, const void *dataptr, u16_t len, u16_t offset)
   if ((q != NULL) && (q->tot_len >= target_offset + len)) {
     u16_t remaining_len = len;
     const u8_t* src_ptr = (const u8_t*)dataptr;
-    if (target_offset > 0) {
-      /* copy the part that goes into the first pbuf */
-      u16_t first_copy_len = LWIP_MIN(q->len - target_offset, len);
-      MEMCPY(((u8_t*)q->payload) + target_offset, dataptr, first_copy_len);
-      remaining_len -= first_copy_len;
-      src_ptr += first_copy_len;
-    }
+    /* copy the part that goes into the first pbuf */
+    u16_t first_copy_len = LWIP_MIN(q->len - target_offset, len);
+    MEMCPY(((u8_t*)q->payload) + target_offset, dataptr, first_copy_len);
+    remaining_len -= first_copy_len;
+    src_ptr += first_copy_len;
     if (remaining_len > 0) {
       return pbuf_take(q->next, src_ptr, remaining_len);
     }

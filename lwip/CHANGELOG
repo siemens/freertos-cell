@@ -6,6 +6,10 @@ HISTORY
 
   ++ New features:
 
+  2015-08-05: Simon Goldschmidt
+  * many files: allow multicast socket options IP_MULTICAST_TTL, IP_MULTICAST_IF
+    and IP_MULTICAST_LOOP to be used without IGMP
+
   2015-04-24: Simon Goldschmidt
   * dhcp.h/c, autoip.h/.c: added functions dhcp/autoip_supplied_address() to
     check for the source of address assignemnt (replacement for NETIF_FLAG_DHCP)
@@ -244,6 +248,24 @@ HISTORY
 
 
   ++ Bugfixes:
+
+  2015-08-20: Manoj Kumar
+  * snmp_msg.h, msg_in.c: fixed bug #43790: Sending octet string of Length >255
+    from SNMP agent
+
+  2015-08-19: Jens Nielsen
+  * icmp.c, ip4.c, tcp_in.c, udp.c, raw.c: fixed bug #45120: Broadcast & multiple
+    interfaces handling
+
+  2015-08-19: Simon Goldschmidt (patch by "Sandra")
+  * dns.c: fixed bug #45004: dns response without answer might be discarded
+
+  2015-08-18: Chrysn
+  * timers.c: patch #8704 fix sys_timeouts_sleeptime function
+
+  2015-07-01: Erik Ekman
+  * puf.c: fixed bug #45454 (pbuf_take_at() skips write and returns OK if offset
+    is at start of pbuf in chain)
 
   2015-05-19: Simon Goldschmidt
   * dhcp.h/.c: fixed bugs #45140 and #45141 (dhcp was not stopped correctly after

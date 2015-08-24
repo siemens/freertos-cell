@@ -375,9 +375,10 @@
 #endif
 
 /**
- * MEMP_NUM_SNMP_VARBIND: the number of concurrent requests (does not have to
- * be changed normally) - 2 of these are used per request (1 for input,
- * 1 for output)
+ * MEMP_NUM_SNMP_VARBIND: influences the number of concurrent requests:
+ * 2 of these are used per request (1 for input, 1 for output), so this needs
+ * to be increased only if you want to support concurrent requests or multiple
+ * variables per request/response.
  */
 #ifndef MEMP_NUM_SNMP_VARBIND
 #define MEMP_NUM_SNMP_VARBIND           2
@@ -385,8 +386,9 @@
 
 /**
  * MEMP_NUM_SNMP_VALUE: the number of OID or values concurrently used
- * (does not have to be changed normally) - 3 of these are used per request
- * (1 for the value read and 2 for OIDs - input and output)
+ * (does not have to be changed normally) - >=3 of these are used per request
+ * (1 for the value read and 2 for OIDs - input and output on getnext, or more
+ * if you want to support multiple varibles per request/response)
  */
 #ifndef MEMP_NUM_SNMP_VALUE
 #define MEMP_NUM_SNMP_VALUE             3
@@ -963,11 +965,11 @@
 
 /*
    ----------------------------------
-   ---------- IGMP options ----------
+   ----- Multicast/IGMP options -----
    ----------------------------------
 */
 /**
- * LWIP_IGMP==1: Turn on IGMP module. 
+ * LWIP_IGMP==1: Turn on IGMP module.
  */
 #ifndef LWIP_IGMP
 #define LWIP_IGMP                       0
@@ -975,6 +977,14 @@
 #if !LWIP_IPV4
 #undef LWIP_IGMP
 #define LWIP_IGMP                       0
+#endif
+
+/**
+ * LWIP_MULTICAST_TX_OPTIONS==1: Enable multicast TX support like the socket options
+ * IP_MULTICAST_TTL/IP_MULTICAST_IF/IP_MULTICAST_LOOP
+ */
+#ifndef LWIP_MULTICAST_TX_OPTIONS
+#define LWIP_MULTICAST_TX_OPTIONS       LWIP_IGMP
 #endif
 
 /*
@@ -1411,7 +1421,7 @@
  * netif is available, loopback traffic uses this netif.
  */
 #ifndef LWIP_HAVE_LOOPIF
-#define LWIP_HAVE_LOOPIF                0
+#define LWIP_HAVE_LOOPIF                LWIP_NETIF_LOOPBACK
 #endif
 
 /*
@@ -1632,7 +1642,9 @@
 #endif
 
 /**
- * LWIP_COMPAT_SOCKETS==1: Enable BSD-style sockets functions names.
+ * LWIP_COMPAT_SOCKETS==1: Enable BSD-style sockets functions names through defines.
+ * LWIP_COMPAT_SOCKETS==2: Same as ==1 but correctly named functions are created.
+ * While this helps code completion, it might conflict with existing libraries.
  * (only used if you use sockets.c)
  */
 #ifndef LWIP_COMPAT_SOCKETS

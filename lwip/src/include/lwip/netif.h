@@ -334,7 +334,7 @@ void netif_remove(struct netif * netif);
    "et0", where the first two letters are the "name" field in the
    netif structure, and the digit is in the num field in the same
    structure. */
-struct netif *netif_find(char *name);
+struct netif *netif_find(const char *name);
 
 void netif_set_default(struct netif *netif);
 
@@ -387,6 +387,12 @@ void netif_poll(struct netif *netif);
 void netif_poll_all(void);
 #endif /* !LWIP_NETIF_LOOPBACK_MULTITHREADING */
 #endif /* ENABLE_LOOPBACK */
+
+#if LWIP_IPV4
+#define netif_ip4_addr(netif)    (&((netif)->ip_addr))
+#define netif_ip4_netmask(netif) (&((netif)->netmask))
+#define netif_ip4_gw(netif)      (&((netif)->gw))
+#endif /* LWIP_IPV4 */
 
 #if LWIP_IPV6
 #define netif_ip6_addr(netif, i)  (&((netif)->ip6_addr[(i)]))

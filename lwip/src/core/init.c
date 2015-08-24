@@ -102,6 +102,15 @@
 #if (LWIP_IGMP && (MEMP_NUM_IGMP_GROUP<=1))
   #error "If you want to use IGMP, you have to define MEMP_NUM_IGMP_GROUP>1 in your lwipopts.h"
 #endif
+#if (LWIP_IGMP && !LWIP_MULTICAST_TX_OPTIONS)
+  #error "If you want to use IGMP, you have to define LWIP_MULTICAST_TX_OPTIONS==1 in your lwipopts.h"
+#endif
+#if (LWIP_IGMP && !LWIP_IPV4)
+  #error "IGMP needs LWIP_IPV4 enabled in your lwipopts.h"
+#endif
+#if (LWIP_MULTICAST_TX_OPTIONS && !LWIP_IPV4)
+  #error "LWIP_MULTICAST_TX_OPTIONS needs LWIP_IPV4 enabled in your lwipopts.h"
+#endif
 #if ((LWIP_NETCONN || LWIP_SOCKET) && (MEMP_NUM_TCPIP_MSG_API<=0))
   #error "If you want to use Sequential API, you have to define MEMP_NUM_TCPIP_MSG_API>=1 in your lwipopts.h"
 #endif
@@ -117,7 +126,7 @@
 #if (LWIP_TCP && (TCP_WND > 0xffffffff))
   #error "If you want to use TCP, TCP_WND must fit in an u32_t, so, you have to reduce it in your lwipopts.h"
 #endif
-#if (LWIP_TCP && LWIP_WND_SCALE > 14)
+#if (LWIP_TCP && LWIP_WND_SCALE && (TCP_RCV_SCALE > 14))
   #error "The maximum valid window scale value is 14!"
 #endif
 #if (LWIP_TCP && (TCP_WND > (0xFFFFU << TCP_RCV_SCALE)))

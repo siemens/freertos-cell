@@ -283,6 +283,7 @@ static void dns_init_local(void);
 /* forward declarations */
 static void dns_recv(void *s, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
 static void dns_check_entries(void);
+static void dns_call_found(u8_t idx, ip_addr_t* addr);
 
 /*-----------------------------------------------------------------------------
  * Globals
@@ -673,11 +674,11 @@ dns_parse_name(struct pbuf* p, u16_t query_idx)
 /**
  * Send a DNS query packet.
  *
- * @param entry the DNS table entry for which to send a request
+ * @param idx the DNS table entry index for which to send a request
  * @return ERR_OK if packet is sent; an err_t indicating the problem otherwise
  */
 static err_t
-dns_send(struct dns_table_entry* entry)
+dns_send(u8_t idx)
 {
   err_t err;
   struct dns_hdr hdr;
@@ -687,11 +688,19 @@ dns_send(struct dns_table_entry* entry)
   const char *hostname, *hostname_part;
   u8_t n;
   u8_t pcb_idx;
+  struct dns_table_entry* entry = &dns_table[idx];
 
   LWIP_DEBUGF(DNS_DEBUG, ("dns_send: dns_servers[%"U16_F"] \"%s\": request\n",
               (u16_t)(entry->server_idx), entry->name));
   LWIP_ASSERT("dns server out of array", entry->server_idx < DNS_MAX_SERVERS);
-  LWIP_ASSERT("dns server has no IP address set", !ip_addr_isany(&dns_servers[entry->server_idx]));
+  if (ip_addr_isany(&dns_servers[entry->server_idx])) {
+    /* DNS server not valid anymore, e.g. PPP netif has been shut down */
+    /* call specified callback function if provided */
+    dns_call_found(idx, NULL);
+    /* flush this entry */
+    entry->state = DNS_STATE_UNUSED; 
+    return ERR_OK;
+  }
 
   /* if here, we have either a new query or a retry on a previous query to process */
   p = pbuf_alloc(PBUF_TRANSPORT, (u16_t)(SIZEOF_DNS_HDR + strlen(entry->name) + 2 +
@@ -827,15 +836,16 @@ dns_alloc_pcb(void)
 static void
 dns_call_found(u8_t idx, ip_addr_t* addr)
 {
+#if ((LWIP_DNS_SECURE & (LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING | LWIP_DNS_SECURE_RAND_SRC_PORT)) != 0)
   u8_t i;
-  LWIP_UNUSED_ARG(i);
+#endif
 
 #if ((LWIP_DNS_SECURE & LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING) != 0)
   for (i = 0; i < DNS_MAX_REQUESTS; i++) {
     if (dns_requests[i].found && (dns_requests[i].dns_table_idx == idx)) {
       (*dns_requests[i].found)(dns_table[idx].name, addr, dns_requests[i].arg);
       /* flush this entry */
-      dns_requests[i].found   = NULL;
+      dns_requests[i].found = NULL;
     }
   }
 #else
@@ -919,7 +929,7 @@ dns_check_entry(u8_t i)
       entry->retries = 0;
 
       /* send DNS packet for this entry */
-      err = dns_send(entry);
+      err = dns_send(i);
       if (err != ERR_OK) {
         LWIP_DEBUGF(DNS_DEBUG | LWIP_DBG_LEVEL_WARNING,
                     ("dns_send returned error: %s\n", lwip_strerr(err)));
@@ -950,7 +960,7 @@ dns_check_entry(u8_t i)
         entry->tmr = entry->retries;
 
         /* send DNS packet for this entry */
-        err = dns_send(entry);
+        err = dns_send(i);
         if (err != ERR_OK) {
           LWIP_DEBUGF(DNS_DEBUG | LWIP_DBG_LEVEL_WARNING,
                       ("dns_send returned error: %s\n", lwip_strerr(err)));
@@ -1008,7 +1018,7 @@ dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, 
   LWIP_UNUSED_ARG(port);
 
   /* is the dns message big enough ? */
-  if (p->tot_len < (SIZEOF_DNS_HDR + SIZEOF_DNS_QUERY + SIZEOF_DNS_ANSWER)) {
+  if (p->tot_len < (SIZEOF_DNS_HDR + SIZEOF_DNS_QUERY)) {
     LWIP_DEBUGF(DNS_DEBUG, ("dns_recv: pbuf too small\n"));
     /* free pbuf and return */
     goto memerr;
@@ -1084,7 +1094,7 @@ dns_recv(void *arg, struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *addr, 
             /* read the IP address after answer resource record's header */
             pbuf_copy_partial(p, &(entry->ipaddr), sizeof(entry->ipaddr), res_idx);
             LWIP_DEBUGF(DNS_DEBUG, ("dns_recv: \"%s\": response = ", entry->name));
-            ip4_addr_debug_print(DNS_DEBUG, (&(entry->ipaddr)));
+            ip_addr_debug_print(DNS_DEBUG, (&(entry->ipaddr)));
             LWIP_DEBUGF(DNS_DEBUG, ("\n"));
             /* call specified callback function if provided */
             dns_call_found(entry_idx, &entry->ipaddr);

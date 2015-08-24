@@ -89,7 +89,8 @@
       (sin6)->sin6_family = AF_INET6; \
       (sin6)->sin6_port = htons((port)); \
       (sin6)->sin6_flowinfo = 0; \
-      inet6_addr_from_ip6addr(&(sin6)->sin6_addr, ipaddr); }while(0)
+      inet6_addr_from_ip6addr(&(sin6)->sin6_addr, ipaddr); \
+      (sin6)->sin6_scope_id = 0; }while(0)
 #define SOCKADDR6_TO_IP6ADDR_PORT(sin6, ipaddr, port) do { \
     inet6_addr_to_ip6addr(ip_2_ip6(ipaddr), &((sin6)->sin6_addr)); \
     (port) = ntohs((sin6)->sin6_port); }while(0)
@@ -276,7 +277,7 @@ static void lwip_socket_drop_registered_memberships(int s);
 static struct lwip_sock sockets[NUM_SOCKETS];
 /** The global list of tasks waiting for select */
 static struct lwip_select_cb *select_cb_list;
-/** This counter is increased from lwip_select when the list is chagned
+/** This counter is increased from lwip_select when the list is changed
     and checked in event_callback to see if it has changed. */
 static volatile int select_cb_ctr;
 
@@ -345,6 +346,20 @@ sockaddr_to_ipaddr_port(const struct sockaddr* sockaddr, ip_addr_t* ipaddr, u16_
   }
 }
 #endif /* LWIP_IPV4 && LWIP_IPV6 */
+
+/** LWIP_NETCONN_SEM_PER_THREAD==1: initialize thread-local semaphore */
+void
+lwip_socket_thread_init(void)
+{
+   netconn_thread_init();
+}
+
+/** LWIP_NETCONN_SEM_PER_THREAD==1: destroy thread-local semaphore */
+void
+lwip_socket_thread_cleanup(void)
+{
+   netconn_thread_cleanup();
+}
 
 /**
  * Map a externally used socket index to the internal socket representation.
@@ -1816,7 +1831,7 @@ lwip_getsockopt_impl(int s, int level, int optname, void *optval, socklen_t *opt
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_IP, IP_TOS) = %d\n",
                   s, *(int *)optval));
       break;
-#if LWIP_IGMP
+#if LWIP_MULTICAST_TX_OPTIONS
     case IP_MULTICAST_TTL:
       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB(sock, *optlen, u8_t);
       if (NETCONNTYPE_GROUP(netconn_type(sock->conn)) != NETCONN_UDP) {
@@ -1845,7 +1860,7 @@ lwip_getsockopt_impl(int s, int level, int optname, void *optval, socklen_t *opt
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_IP, IP_MULTICAST_LOOP) = %d\n",
                   s, *(int *)optval));
       break;
-#endif /* LWIP_IGMP */
+#endif /* LWIP_MULTICAST_TX_OPTIONS */
     default:
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_getsockopt(%d, IPPROTO_IP, UNIMPL: optname=0x%x, ..)\n",
                   s, optname));
@@ -2176,7 +2191,7 @@ lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_
       LWIP_DEBUGF(SOCKETS_DEBUG, ("lwip_setsockopt(%d, IPPROTO_IP, IP_TOS, ..)-> %d\n",
                   s, sock->conn->pcb.ip->tos));
       break;
-#if LWIP_IGMP
+#if LWIP_MULTICAST_TX_OPTIONS
     case IP_MULTICAST_TTL:
       LWIP_SOCKOPT_CHECK_OPTLEN_CONN_PCB_TYPE(sock, optlen, u8_t, NETCONN_UDP);
       sock->conn->pcb.udp->mcast_ttl = (u8_t)(*(const u8_t*)optval);
@@ -2197,6 +2212,8 @@ lwip_setsockopt_impl(int s, int level, int optname, const void *optval, socklen_
         udp_setflags(sock->conn->pcb.udp, udp_flags(sock->conn->pcb.udp) & ~UDP_FLAGS_MULTICAST_LOOP);
       }
       break;
+#endif /* LWIP_MULTICAST_TX_OPTIONS */
+#if LWIP_IGMP
     case IP_ADD_MEMBERSHIP:
     case IP_DROP_MEMBERSHIP:
       {

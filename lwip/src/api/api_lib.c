@@ -131,8 +131,10 @@ netconn_delete(struct netconn *conn)
      sys_now() + conn->send_timeout */
   API_MSG_VAR_REF(msg).msg.msg.sd.time_started = sys_now();
 #else /* LWIP_SO_SNDTIMEO || LWIP_SO_LINGER */
+#if LWIP_TCP
   API_MSG_VAR_REF(msg).msg.msg.sd.polls_left =
     ((LWIP_TCP_CLOSE_TIMEOUT_MS_DEFAULT + TCP_SLOW_INTERVAL - 1) / TCP_SLOW_INTERVAL) + 1;
+#endif /* LWIP_TCP */
 #endif /* LWIP_SO_SNDTIMEO || LWIP_SO_LINGER */
   TCPIP_APIMSG(&API_MSG_VAR_REF(msg), lwip_netconn_do_delconn, err);
   API_MSG_VAR_FREE(msg);
@@ -870,17 +872,17 @@ netconn_gethostbyname(const char *name, ip_addr_t *addr)
 void netconn_thread_init(void)
 {
   sys_sem_t *sem = LWIP_NETCONN_THREAD_SEM_GET();
-  if (sem == SYS_SEM_NULL) {
+  if ((sem == NULL) || !sys_sem_valid(sem)) {
     /* call alloc only once */
     LWIP_NETCONN_THREAD_SEM_ALLOC();
-    LWIP_ASSERT("LWIP_NETCONN_THREAD_SEM_ALLOC() failed", LWIP_NETCONN_THREAD_SEM_GET() != SYS_SEM_NULL);
+    LWIP_ASSERT("LWIP_NETCONN_THREAD_SEM_ALLOC() failed", sys_sem_valid(LWIP_NETCONN_THREAD_SEM_GET()));
   }
 }
 
 void netconn_thread_cleanup(void)
 {
   sys_sem_t *sem = LWIP_NETCONN_THREAD_SEM_GET();
-  if (sem == SYS_SEM_NULL) {
+  if ((sem != NULL) && sys_sem_valid(sem)) {
     /* call free only once */
     LWIP_NETCONN_THREAD_SEM_FREE();
   }
