@@ -1,0 +1,3 @@
+[submodule "lwip"]
+	path = lwip
+	url = http://git.savannah.gnu.org/r/lwip.git
