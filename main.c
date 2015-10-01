@@ -827,6 +827,12 @@ static void echoTcpTask(void *pvParameters)
   }
 }
 
+u32_t pppos_output_cb(ppp_pcb *pcb, u8_t *data, u32_t len, void *ctx)
+{
+  (void)pcb;
+  return sio_write(ctx, data, len);
+}
+
 static void pppTask(void *pvParameters)
 {
   const char *username = "rtosuser";
@@ -837,7 +843,7 @@ static void pppTask(void *pvParameters)
 
   wait_for_tcpip(__func__);
   memset(&nif, 0, sizeof(nif));
-  ppp_obj = pppos_create(&nif, ser_dev, ppp_status_cb, NULL);
+  ppp_obj = pppos_create(&nif, pppos_output_cb, ppp_status_cb, ser_dev);
   configASSERT(NULL != ppp_obj);
   ppp_set_default(ppp_obj);
   ppp_set_auth(ppp_obj, PPPAUTHTYPE_ANY, username, password);
