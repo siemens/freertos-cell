@@ -41,7 +41,6 @@ LWIP_DIR = $(src)/lwip/src
 # Core code
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/def.c \
-	$(LWIP_DIR)/core/dhcp.c \
 	$(LWIP_DIR)/core/dns.c \
 	$(LWIP_DIR)/core/inet_chksum.c \
 	$(LWIP_DIR)/core/init.c \
@@ -60,6 +59,7 @@ LWIP_C_SRCS += \
 # IPv4 code
 CFLAGS += -I$(LWIP_DIR)/include/ipv4
 LWIP_C_SRCS += \
+	$(LWIP_DIR)/core/ipv4/dhcp.c \
 	$(LWIP_DIR)/core/ipv4/autoip.c \
 	$(LWIP_DIR)/core/ipv4/icmp.c \
 	$(LWIP_DIR)/core/ipv4/igmp.c \

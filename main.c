@@ -92,6 +92,8 @@
 #include "netif/ppp/pppos.h"
 #include "netif/slipif.h"
 #include "lwip/inet.h"
+#include "lwip/netbuf.h"
+#include "lwip/api.h"
 /* }}} */
 
 /* {{{1 Defines */
