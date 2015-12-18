@@ -14,7 +14,7 @@ struct {
   struct jailhouse_irqchip irqchips[1];
 } __attribute__((packed)) config = {
 	.cell = {
-		.signature = JAILHOUSE_SYSTEM_SIGNATURE,
+		.signature = JAILHOUSE_CELL_DESC_SIGNATURE,
 		.name = "FreeRTOS",
 		.flags = JAILHOUSE_CELL_PASSIVE_COMMREG,
 
