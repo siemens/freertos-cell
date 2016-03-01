@@ -44,6 +44,7 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/dns.c \
 	$(LWIP_DIR)/core/inet_chksum.c \
 	$(LWIP_DIR)/core/init.c \
+	$(LWIP_DIR)/core/ip.c \
 	$(LWIP_DIR)/core/mem.c \
 	$(LWIP_DIR)/core/memp.c \
 	$(LWIP_DIR)/core/netif.c \
@@ -80,6 +81,7 @@ LWIP_C_SRCS += \
 # netif
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/netif/etharp.c \
+	$(LWIP_DIR)/netif/ethernet.c \
 	$(LWIP_DIR)/netif/ethernetif.c \
 	$(LWIP_DIR)/netif/slipif.c
 # PPP
