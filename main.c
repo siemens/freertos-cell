@@ -88,7 +88,7 @@
 
 /* lwIP includes */
 #include "lwip/tcpip.h"
-#include "lwip/pppapi.h"
+#include "netif/ppp/pppapi.h"
 #include "netif/ppp/pppos.h"
 #include "netif/slipif.h"
 #include "lwip/inet.h"
