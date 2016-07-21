@@ -55,18 +55,19 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/tcp.c \
 	$(LWIP_DIR)/core/tcp_in.c \
 	$(LWIP_DIR)/core/tcp_out.c \
-	$(LWIP_DIR)/core/timers.c \
+	$(LWIP_DIR)/core/timeouts.c \
 	$(LWIP_DIR)/core/udp.c
 # IPv4 code
 CFLAGS += -I$(LWIP_DIR)/include/ipv4
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/core/ipv4/dhcp.c \
 	$(LWIP_DIR)/core/ipv4/autoip.c \
+	$(LWIP_DIR)/core/ipv4/etharp.c \
 	$(LWIP_DIR)/core/ipv4/icmp.c \
 	$(LWIP_DIR)/core/ipv4/igmp.c \
 	$(LWIP_DIR)/core/ipv4/ip4_addr.c \
-	$(LWIP_DIR)/core/ipv4/ip4.c \
-	$(LWIP_DIR)/core/ipv4/ip_frag.c
+	$(LWIP_DIR)/core/ipv4/ip4_frag.c \
+	$(LWIP_DIR)/core/ipv4/ip4.c
 # API code
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/api_lib.c \
@@ -79,7 +80,6 @@ LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/tcpip.c
 # netif
 LWIP_C_SRCS += \
-	$(LWIP_DIR)/netif/etharp.c \
 	$(LWIP_DIR)/netif/ethernet.c \
 	$(LWIP_DIR)/netif/ethernetif.c \
 	$(LWIP_DIR)/netif/ppp/pppapi.c \

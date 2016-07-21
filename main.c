@@ -88,6 +88,7 @@
 
 /* lwIP includes */
 #include "lwip/tcpip.h"
+#include "netif/ppp/ppp.h"
 #include "netif/ppp/pppapi.h"
 #include "netif/ppp/pppos.h"
 #include "netif/slipif.h"
@@ -837,8 +838,6 @@ u32_t pppos_output_cb(ppp_pcb *pcb, u8_t *data, u32_t len, void *ctx)
 
 static void pppTask(void *pvParameters)
 {
-  const char *username = "rtosuser";
-  const char *password = "rtospass";
   const char *msg = NULL;
   struct netif nif;
   TickType_t delay = pdMS_TO_TICKS(2000);
@@ -848,7 +847,7 @@ static void pppTask(void *pvParameters)
   ppp_obj = pppos_create(&nif, pppos_output_cb, ppp_status_cb, ser_dev);
   configASSERT(NULL != ppp_obj);
   ppp_set_default(ppp_obj);
-  ppp_set_auth(ppp_obj, PPPAUTHTYPE_ANY, username, password);
+  //ppp_set_auth(ppp_obj, PPPAUTHTYPE_ANY, username, password);
   ppp_connect(ppp_obj, 0);
   xEventGroupSetBits(event_status, EVBIT_PPP_INIT_DONE);
   while(1) {
