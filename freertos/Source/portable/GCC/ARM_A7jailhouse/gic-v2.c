@@ -115,6 +115,9 @@ void *gic_v2_init(void)
   gicd_base = gicbase + GICD_OFFSET;
   gicc_base = gicbase + GICC_OFFSET;
   printf("gicc_base=%x gicd_base=%x\n\r", (unsigned)gicc_base, (unsigned)gicd_base);
+  // Global enable forwarding interrupts from distributor to cpu interface
+	mmio_write32(gicd_base + GICD_CTLR, GICD_CTLR_GRPEN1);
+  // Global enable signalling of interrupt from the cpu interface
 	mmio_write32(gicc_base + GICC_CTLR, GICC_CTLR_GRPEN1);
 	mmio_write32(gicc_base + GICC_PMR, GICC_PMR_DEFAULT);
 	return gicbase;

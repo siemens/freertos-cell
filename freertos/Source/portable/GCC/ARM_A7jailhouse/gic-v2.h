@@ -79,6 +79,8 @@
 #define GICH_OFFSET 0x4000
 #define GICV_OFFSET 0x6000
 
+#define GICD_CTLR		0x0000
+#define GICD_CTLR_GRPEN1	(1 << 0)
 #define GICD_ISENABLER      0x0100
 #define GICD_ITARGETSR      0x0800
 #define GICD_IPRIORITYR     0x0400
