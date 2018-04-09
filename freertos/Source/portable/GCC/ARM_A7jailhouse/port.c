@@ -341,15 +341,17 @@ BaseType_t xPortStartScheduler( void )
 		/* Read the value back to see how many bits stuck. */
 		ucMaxPriorityValue = *pucFirstUserPriorityRegister;
 
-		/* Shift to the least significant bits. */
-		while( ( ucMaxPriorityValue & portBIT_0_SET ) != portBIT_0_SET )
-		{
-			ucMaxPriorityValue >>= ( uint8_t ) 0x01;
-		}
+		if(ucMaxPriorityValue) {
+			/* Shift to the least significant bits. */
+			while( ( ucMaxPriorityValue & portBIT_0_SET ) != portBIT_0_SET )
+			{
+				ucMaxPriorityValue >>= ( uint8_t ) 0x01;
+			}
 
-		/* Sanity check configUNIQUE_INTERRUPT_PRIORITIES matches the read
-		value. */
-		configASSERT( ucMaxPriorityValue == portLOWEST_INTERRUPT_PRIORITY );
+			/* Sanity check configUNIQUE_INTERRUPT_PRIORITIES matches the read
+				 value. */
+			configASSERT( ucMaxPriorityValue == portLOWEST_INTERRUPT_PRIORITY );
+		}
 
 		/* Restore the clobbered interrupt priority register to its original
 		value. */
