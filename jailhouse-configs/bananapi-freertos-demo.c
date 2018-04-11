@@ -4,7 +4,7 @@
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MBYTE(m) ((m)<<20)
 
-#define GUEST_MEM_START 0x7a800000 /* XXX */
+#define GUEST_MEM_START 0x7a800000
 #define GUEST_MEM_SIZE MBYTE(16)
 
 struct {
@@ -41,12 +41,13 @@ struct {
 			.phys_start = 0x01c29000,
 			.virt_start = 0x01c29000,
 			.size = 0x1000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE | JAILHOUSE_MEM_IO,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
 		},
-		/* CCU, Ints, GPIO, Timer */ {
-			.phys_start = 0x01c20000,
-			.virt_start = 0x01c20000,
-			.size = 0x400,
+		/* CCU (Hack) */ {
+			.phys_start = 0x01c2006c,
+			.virt_start = 0x01c2006c,
+			.size = 0x4,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE | 
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32 | JAILHOUSE_MEM_ROOTSHARED,
 		},
@@ -61,7 +62,7 @@ struct {
 	},
 	.irqchips = {
 		/* GIC */ {
-			.address = 0x01c81000, /* XXX perhaps 0x01c81000 */
+			.address = 0x01c81000,
 			.pin_base = 32,
 			/* Interrupt of UART 7 belongs to the client */
 			.pin_bitmap = {
