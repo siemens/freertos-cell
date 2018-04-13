@@ -363,6 +363,40 @@ static void testTask( void *pvParameters )
   vTaskDelete( NULL );
 }
 
+#define RW_FLAG pcimem[0]
+#define FRAME_NO pcimem[1]
+#define SYNC_LOST pcimem[2]
+#define FRAME_ERR pcimem[3]
+#define CYCLE_TIME pcimem[4]
+#define HISTOGRAM (pcimem+8)
+#define HISTO_LEN 20
+
+static void pciTask(void *pvParameters)
+{
+  volatile uint32_t *pcimem = (uint32_t*)0x7bf00000;
+  TickType_t actual_time = xTaskGetTickCount();
+  TickType_t last_time;
+  RW_FLAG = FRAME_NO = SYNC_LOST = FRAME_ERR = CYCLE_TIME = 0;
+  for(int i = 0; i < HISTO_LEN; i++)
+    HISTOGRAM[i] = 3*i;
+  while(1) {
+    FRAME_ERR = 0;
+    SYNC_LOST = ++FRAME_NO >> 1;
+    for(int i = 0; i < HISTO_LEN; i++) {
+      HISTOGRAM[i] += 4;
+      HISTOGRAM[i] %= 101;
+    }
+    last_time = actual_time;
+    actual_time = xTaskGetTickCount();
+    CYCLE_TIME = actual_time - last_time;
+    RW_FLAG = 1; /* Next data is ready to be read */
+    while(RW_FLAG) {
+      ++FRAME_ERR;
+      vTaskDelay(pdMS_TO_TICKS(25));
+    }
+  }
+}
+
 static void blinkTask(void *pvParameters)
 {
   unsigned arg = (int)pvParameters;
@@ -992,7 +1026,13 @@ void inmate_main(void)
         tskIDLE_PRIORITY+1, /* The priority assigned to the task. */
         NULL );								    /* The task handle is not required, so NULL is passed. */
   }
-  printf("vTaskStartScheduler goes active with %lu tasks\n", uxTaskGetNumberOfTasks());
+  if(1) xTaskCreate( pciTask, /* The function that implements the task. */
+      "pci", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      NULL, 								/* The parameter passed to the task */
+      tskIDLE_PRIORITY+2, /* The priority assigned to the task. */
+      NULL );								    /* The task handle is not required, so NULL is passed. */
+  printf("vTaskStartScheduler goes active\n");
   vTaskStartScheduler();
   printf("vTaskStartScheduler terminated: strange!!!\n");
 	while (1) {
