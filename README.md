@@ -33,21 +33,21 @@ then do the following to build new cell description files for the hypervisor
 
 1. Root cell description
     
-          cp $FREERTOS_CELL_DIR/jailhouse-configs/bananapi.c $JAILHOUSE_DIR/configs/
+          cp $FREERTOS_CELL_DIR/jailhouse-configs/bananapi.c $JAILHOUSE_DIR/configs/arm/
 
 2. RTOS cell description
 
-          cp $FREERTOS_CELL_DIR/jailhouse-configs/bananapi-freertos-demo.c $JAILHOUSE_DIR/configs/
+          cp $FREERTOS_CELL_DIR/jailhouse-configs/bananapi-freertos-demo.c $JAILHOUSE_DIR/configs/arm/
 
-3. Rebuild your jailhouse subsystem. In the directory "$JAILHOUSE_DIR/configs" you will get
+3. Rebuild your jailhouse subsystem. In the directory "$JAILHOUSE_DIR/configs/arm" you will get
    two new files which are used in the next step.
 
 4. Setup your jailhouse instances
 
 This step has to be executed on the ARM target. You have to transfer the cell files to the target machine.
 
-          jailhouse enable $JAILHOUSE_DIR/configs/bananapi.cell
-          jailhouse cell create $JAILHOUSE_DIR/configs/bananapi-freertos-demo.cell
+          jailhouse enable $JAILHOUSE_DIR/configs/arm/bananapi.cell
+          jailhouse cell create $JAILHOUSE_DIR/configs/arm/bananapi-freertos-demo.cell
 
 ## FreeRTOS code generation
 
