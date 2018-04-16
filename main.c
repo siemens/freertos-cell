@@ -369,7 +369,7 @@ static void testTask( void *pvParameters )
 #define FRAME_ERR pcimem[3]
 #define CYCLE_TIME pcimem[4]
 #define HISTOGRAM (pcimem+8)
-#define HISTO_LEN 20
+#define HISTO_LEN 21
 
 static void pciTask(void *pvParameters)
 {
