@@ -363,6 +363,7 @@ static void testTask( void *pvParameters )
   vTaskDelete( NULL );
 }
 
+#define PCI_SHARED_MEM_BASE 0x7bf00000
 #define RW_FLAG pcimem[0]
 #define FRAME_NO pcimem[1]
 #define SYNC_LOST pcimem[2]
@@ -373,7 +374,7 @@ static void testTask( void *pvParameters )
 
 static void pciTask(void *pvParameters)
 {
-  volatile uint32_t *pcimem = (uint32_t*)0x7bf00000;
+  volatile uint32_t *pcimem = (uint32_t*)PCI_SHARED_MEM_BASE;
   TickType_t actual_time = xTaskGetTickCount();
   TickType_t last_time;
   RW_FLAG = FRAME_NO = SYNC_LOST = FRAME_ERR = CYCLE_TIME = 0;
@@ -604,7 +605,7 @@ static void uart_irq_enable(void)
 static void prvSetupHardware(void)
 {
   unsigned apsr;
-  static unsigned long io_dev_map[2];
+  static unsigned long io_dev_map[3];
   uint32_t *ph_cfg_reg = PIO_P7_CFG_REG;
   /* Set GREEN LED pin as output */
   ph_cfg_reg[3] &= ~(0x7<<0); /* Clear PH24_SELECT */
@@ -616,6 +617,7 @@ static void prvSetupHardware(void)
   printf("Initializing the HW...\n");
   if(USE_CACHE_MMU) hardware_cpu_caches_off();
   io_dev_map[1] = (unsigned long)gic_v2_init();
+  io_dev_map[2] = PCI_SHARED_MEM_BASE;
   if(USE_CACHE_MMU) hardware_mmu_ptable_setup(io_dev_map, ARRAY_SIZE(io_dev_map));
   if(USE_CACHE_MMU) hardware_cpu_cache_mmu_enable();
   /* Replace the exception vector table by a FreeRTOS variant */
