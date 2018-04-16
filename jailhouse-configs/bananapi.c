@@ -20,7 +20,7 @@
 struct {
 	struct jailhouse_system header;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[20];
+	struct jailhouse_memory mem_regions[22];
 	struct jailhouse_irqchip irqchips[1];
 	struct jailhouse_pci_device pci_devices[1];
 } __attribute__((packed)) config = {
@@ -203,6 +203,20 @@ struct {
 			.size = 0x30,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
+		},
+		/* Digital Audio Interface (I2S, LRADC AD/DA) */ {
+			.phys_start = 0x01c22000,
+			.virt_start = 0x01c22000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32
+		},
+		/* DMA */ {
+			.phys_start = 0x01c02000,
+			.virt_start = 0x01c02000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32
 		},
 		/* Framebuffer */ {
 			.phys_start = 0x7f736000,
