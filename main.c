@@ -893,14 +893,6 @@ static void netstatTask(void *data)
 
 /* {{{1 main */
 
-int putchar(int c)
-{
-  serial_putchar(ser_dev, c);
-  if('\n' == c)
-    serial_putchar(ser_dev, '\r');
-  return c;
-}
-
 void inmate_main(void)
 {
   unsigned i;
