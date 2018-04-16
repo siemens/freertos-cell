@@ -72,7 +72,6 @@ LWIP_C_SRCS += \
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/api/api_lib.c \
 	$(LWIP_DIR)/api/api_msg.c \
-	$(LWIP_DIR)/api/err.c \
 	$(LWIP_DIR)/api/netbuf.c \
 	$(LWIP_DIR)/api/netdb.c \
 	$(LWIP_DIR)/api/netifapi.c \
@@ -81,7 +80,6 @@ LWIP_C_SRCS += \
 # netif
 LWIP_C_SRCS += \
 	$(LWIP_DIR)/netif/ethernet.c \
-	$(LWIP_DIR)/netif/ethernetif.c \
 	$(LWIP_DIR)/netif/ppp/pppapi.c \
 	$(LWIP_DIR)/netif/slipif.c
 # PPP

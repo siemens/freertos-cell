@@ -813,12 +813,10 @@ static void echoTcpTask(void *pvParameters)
           } while(netbuf_next(buf) >= 0);
           netbuf_delete(buf);
         }
-        else if (ERR_IS_FATAL(err)) {
+        else {
           UART_OUTPUT("RECV ERR: err=%d\n", err);
           break;
         }
-        else
-          UART_OUTPUT("RECV WARN: err=%d\n", err);
       }
       printf("%s: C[%s] <=== ! ===> S\n", __func__, connected_to_info);
       netconn_close(newconn);

@@ -108,6 +108,14 @@ static inline err_t sys_mbox_trypost(sys_mbox_t *mbox, void *msg)
 	return pdTRUE == xQueueSend(*mbox, &msg, 0) ? ERR_OK : ERR_MEM;
 }
 
+static inline err_t sys_mbox_trypost_fromisr(sys_mbox_t *mbox, void *msg)
+{
+  BaseType_t pxHigherPriorityTaskWoken = pdFALSE;
+  err_t err = pdTRUE == xQueueSendToBackFromISR(*mbox, &msg, &pxHigherPriorityTaskWoken) ? ERR_OK : ERR_MEM; 
+  portYIELD_FROM_ISR(pxHigherPriorityTaskWoken);
+  return err;
+}
+
 /*-----------------------------------------------------------------------------------*/
 // Signals a semaphore
 static inline void sys_sem_signal(sys_sem_t *sem)

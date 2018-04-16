@@ -352,4 +352,6 @@ a lot of data that needs to be copied, this should be set high. */
 				 address if UIP_FIXEDETHADDR is
 				 1. \hideinitializer */
 
+#undef LWIP_NO_CTYPE_H
+#define LWIP_NO_CTYPE_H 1
 #endif /* __LWIPOPTS_H__ */
