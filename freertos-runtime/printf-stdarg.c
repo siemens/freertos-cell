@@ -45,7 +45,11 @@ static __attribute__((unused)) void hyp_putchar(int c)
       );
 }
 
+#if 0
 #define putchar(c) hyp_putchar(c)
+#else
+#define putchar(c) ((void)(c))
+#endif
 
 static void printchar(char **str, int c)
 {
