@@ -174,13 +174,16 @@ void __div0(void)
 
 /* }}} */
 
-/* {{{1 LED control */
-static void led_toggle(void)
+/* {{{1 PIN control */
+
+#define PIO_P7_CFG_REG ((void*)(0x01c20800 + 7*0x24))
+#define LED_PIN 24 /* PH24 */
+
+void pin_toggle(int pin)
 {
 #ifdef CONFIG_MACH_SUN7I
-#define PIO_BASE ((void*)0x01c20800)
-  uint32_t *led_reg = PIO_BASE + 7*0x24 + 0x10;
-  *led_reg ^= 1<<24;
+  uint32_t *data_reg = PIO_P7_CFG_REG + 0x10; /* DATA register */
+  *data_reg ^= 1<<pin;
 #endif
 }
 /* }}} */
@@ -272,7 +275,7 @@ static void uartTask(void *pvParameters)
   int idx = 0;
   while(pdTRUE) {
     if(pdTRUE == xTaskNotifyWait(0, 0, &c, pdMS_TO_TICKS(250))) {
-      led_toggle();
+      pin_toggle(LED_PIN);
       //hyp_putchar(c);
       s[idx] = c;
       if('\r' == s[idx] || idx >= sizeof(s)-1) {
@@ -357,10 +360,13 @@ static void testTask( void *pvParameters )
 
 static void blinkTask(void *pvParameters)
 {
+  unsigned arg = (unsigned)pvParameters;
+  unsigned period_ms = arg & 0xffff;
+  unsigned pin = arg >> 16;
   TickType_t pxPreviousWakeTime = xTaskGetTickCount();
   while(1) {
-    led_toggle();
-    vTaskDelayUntil(&pxPreviousWakeTime, pdMS_TO_TICKS(250));
+    pin_toggle(pin);
+    vTaskDelayUntil(&pxPreviousWakeTime, pdMS_TO_TICKS(period_ms));
   }
 }
 
@@ -560,6 +566,10 @@ static void prvSetupHardware(void)
 {
   unsigned apsr;
   static unsigned long io_dev_map[2];
+  uint32_t *ph_cfg_reg = PIO_P7_CFG_REG;
+  /* Set GREEN LED pin as output */
+  ph_cfg_reg[3] &= ~(0x7<<0); /* Clear PH24_SELECT */
+  ph_cfg_reg[3] |= 0x1<<0; /* Set PH24_SELECT as output */
 
   ser_dev = serial_open();
   io_dev_map[0] = (unsigned long)ser_dev;
@@ -630,7 +640,7 @@ void inmate_main(void)
   xTaskCreate( blinkTask, /* The function that implements the task. */
       "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
-      NULL, 								/* The parameter passed to the task */
+      (void*)(LED_PIN<<16 | 250), 								/* The parameter passed to the task */
       tskIDLE_PRIORITY, /* The priority assigned to the task. */
       NULL );								    /* The task handle is not required, so NULL is passed. */
   if(1) for(i = 0; i < 2; i++) {
