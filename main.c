@@ -612,6 +612,18 @@ static void prvSetupHardware(void)
   ph_cfg_reg[3] &= ~(0x7<<0); /* Clear PH24_SELECT */
   ph_cfg_reg[3] |= 0x1<<0; /* Set PH24_SELECT as output */
 
+  /* Configure additional output pins */
+  /* IO-1 pin */
+  ph_cfg_reg[0] &= ~(0x7<<8); /* Clear PH2_SELECT */
+  ph_cfg_reg[0] |= 0x1<<8; /* Set PH2_SELECT as output */
+  /* IO-8 pin */
+  ph_cfg_reg[0] &= ~(0x7<<12); /* Clear PH3_SELECT */
+  ph_cfg_reg[0] |= 0x1<<12; /* Set PH3_SELECT as output */
+  /* IO-7 pin */
+  ph_cfg_reg[0] &= ~(0x7<<20); /* Clear PH5_SELECT */
+  ph_cfg_reg[0] |= 0x1<<20; /* Set PH5_SELECT as output */
+
+
   ser_dev = serial_open();
   io_dev_map[0] = (unsigned long)ser_dev;
   show_cache_mmu_status("MMU/Cache status at entry");
