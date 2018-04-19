@@ -54,11 +54,11 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE | 
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32 | JAILHOUSE_MEM_ROOTSHARED,
 		},
-#define PIO_P7_DAT_REG (0x01c20800 + 7*0x24 + 0x10)
+#define PIO_P7_BASE_REG (0x01c20800 + 7*0x24)
 		/* PIO port 7: blinking LED */ {
-			.phys_start = PIO_P7_DAT_REG,
-			.virt_start = PIO_P7_DAT_REG,
-			.size = 0x4,
+			.phys_start = PIO_P7_BASE_REG,
+			.virt_start = PIO_P7_BASE_REG,
+			.size = 0x4 * 9,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
 		},
