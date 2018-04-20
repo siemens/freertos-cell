@@ -395,6 +395,7 @@ static void pciTask(void *pvParameters)
       ++FRAME_ERR;
       vTaskDelay(pdMS_TO_TICKS(25));
     }
+    pin_toggle(2);
   }
 }
 
@@ -1031,6 +1032,24 @@ void inmate_main(void)
       "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       (void*)(LED_PIN<<16 | 250), 								/* The parameter passed to the task */
+      tskIDLE_PRIORITY, /* The priority assigned to the task. */
+      NULL );								    /* The task handle is not required, so NULL is passed. */
+  if(0) xTaskCreate( blinkTask, /* The function that implements the task. */
+      "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      (void*)(2<<16 | 83), 								/* The parameter passed to the task */
+      tskIDLE_PRIORITY, /* The priority assigned to the task. */
+      NULL );								    /* The task handle is not required, so NULL is passed. */
+  if(1) xTaskCreate( blinkTask, /* The function that implements the task. */
+      "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      (void*)(3<<16 | 150), 								/* The parameter passed to the task */
+      tskIDLE_PRIORITY, /* The priority assigned to the task. */
+      NULL );								    /* The task handle is not required, so NULL is passed. */
+  if(1) xTaskCreate( blinkTask, /* The function that implements the task. */
+      "blink", /* The text name assigned to the task - for debug only; not used by the kernel. */
+      configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
+      (void*)(5<<16 | 750), 								/* The parameter passed to the task */
       tskIDLE_PRIORITY, /* The priority assigned to the task. */
       NULL );								    /* The task handle is not required, so NULL is passed. */
   if(0) for(i = 0; i < 2; i++) {
