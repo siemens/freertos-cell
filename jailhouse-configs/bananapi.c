@@ -15,7 +15,7 @@
 #include <jailhouse/types.h>
 #include <jailhouse/cell-config.h>
 
-#define ARRAY_SIZE(a) sizeof(a) / sizeof(a[0])
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 
 struct {
 	struct jailhouse_system header;
@@ -184,12 +184,6 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_EXECUTE,
 		},
-		/* IVSHMEM shared memory region */ {
-			.phys_start = 0x7bf00000,
-			.virt_start = 0x7bf00000,
-			.size = 0x100000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE,
-		},
 		/* TWI, PS2-0,PS2-1 memory region */ {
 			.phys_start = 0x01c2a000,
 			.virt_start = 0x01c2a000,
@@ -231,6 +225,13 @@ struct {
 			.size = 9<<20,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE | JAILHOUSE_MEM_IO,
 		},
+		/* ATTENTION: KEEP THIS AT THE END OF THE ARRAY */
+		/* IVSHMEM shared memory region */ {
+			.phys_start = 0x7bf00000,
+			.virt_start = 0x7bf00000,
+			.size = 0x100000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE,
+		},
 	},
 
 	.irqchips = {
@@ -251,7 +252,8 @@ struct {
 				0xffffff00, 0xffffffff, 0x00000000,
 				0x00000000, 0x00000000, 0x00000000,
 			},
-			.shmem_region = 16, /* Index into the .mem_regions array where the IVSHMEM is located */
+			/* Take the last entry of the mem_regions array */
+			.shmem_region = ARRAY_SIZE(config.mem_regions) - 1,
 			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
 		},
 	},
