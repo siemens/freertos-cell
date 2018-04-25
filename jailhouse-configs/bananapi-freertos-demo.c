@@ -88,7 +88,7 @@ struct {
 				0xffffff00, 0xffffffff, 0x00000000,
 				0x00000000, 0x00000000, 0x00000000,
 			},
-			.shmem_region = 4,
+			.shmem_region = 4, /* Index into the .mem_regions array where the IVSHMEM is located */
 			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
 		},
 	},
