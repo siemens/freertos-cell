@@ -210,7 +210,9 @@ void pin_toggle(int pin)
 {
 #ifdef CONFIG_MACH_SUN7I
   uint32_t *data_reg = PIO_P7_CFG_REG + 0x10; /* DATA register */
+  portENTER_CRITICAL();
   *data_reg ^= 1<<pin;
+  portEXIT_CRITICAL();
 #endif
 }
 /* }}} */
