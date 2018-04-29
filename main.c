@@ -587,20 +587,19 @@ static void hardware_mmu_ptable_setup(unsigned long iomem[], int n)
       );
 }
 
-static void uart_irq_enable(void)
+static void irq_enable(int m)
 {
   volatile uint8_t *gicd = gic_v2_gicd_get_address() + GICD_ITARGETSR;
-  int n, m, offset;
-  m = UART7_IRQ;
-  printf("UART gicd=%p CPUID=%d\n", gicd, (int)gicd[0]);
+  int n, offset;
+  printf("IRQ gicd=%p CPUID=%d\n", gicd, (int)gicd[0]);
   n = m / 4;
   offset = 4*n;
   offset += m % 4;
   printf("\tOrig GICD_ITARGETSR[%d]=%d\n",m, (int)gicd[offset]);
   gicd[offset] |= gicd[0];
   printf("\tNew  GICD_ITARGETSR[%d]=%d\n",m, (int)gicd[offset]);
-  gic_v2_irq_set_prio(UART7_IRQ, portLOWEST_USABLE_INTERRUPT_PRIORITY);
-  gic_v2_irq_enable(UART7_IRQ);
+  gic_v2_irq_set_prio(m, portLOWEST_USABLE_INTERRUPT_PRIORITY);
+  gic_v2_irq_enable(m);
   //ARM_SLEEP;
 }
 
@@ -639,7 +638,7 @@ static void prvSetupHardware(void)
   /* Replace the exception vector table by a FreeRTOS variant */
   vPortInstallFreeRTOSVectorTable();
   hardware_fpu_enable();
-  uart_irq_enable();
+  irq_enable(UART7_IRQ);
   serial_irq_rx_enable(ser_dev);
   arm_read_sysreg(CNTFRQ, timer_frq);
   if(!timer_frq) {
