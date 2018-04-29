@@ -62,6 +62,7 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
 		},
+		/* ATTENTION: KEEP THIS AT THE END OF THE ARRAY */
 		/* IVSHMEM shared memory region */ {
 			.phys_start = 0x7bf00000,
 			.virt_start = 0x7bf00000,
@@ -88,7 +89,8 @@ struct {
 				0xffffff00, 0xffffffff, 0x00000000,
 				0x00000000, 0x00000000, 0x00000000,
 			},
-			.shmem_region = 4,
+			/* Take the last entry of the mem_regions array */
+			.shmem_region = ARRAY_SIZE(config.mem_regions) - 1,
 			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
 		},
 	},
