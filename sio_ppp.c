@@ -97,7 +97,9 @@ static void green_led_toggle(void)
 #ifdef CONFIG_MACH_SUN7I
 #define PIO_BASE ((void*)0x01c20800)
   uint32_t *led_reg = PIO_BASE + 7*0x24 + 0x10;
+  portENTER_CRITICAL();
   *led_reg ^= 1<<24;
+  portEXIT_CRITICAL();
 #endif
 }
 
@@ -116,7 +118,7 @@ u32_t sio_tryread(sio_fd_t fd, u8_t *data, u32_t len)
   while(cnt < len && pdTRUE == xQueueReceive(ser_rx_queue, &c, delay)) {
     *data++ = c;
     ++cnt;
-    green_led_toggle();
+    if(0) green_led_toggle();
   }
   return cnt;
 }
@@ -128,7 +130,7 @@ u32_t sio_read(sio_fd_t fd, u8_t *data, u32_t len)
   while(cnt < len && pdTRUE == xQueueReceive(ser_rx_queue, &c, portMAX_DELAY)) {
     *data++ = c;
     ++cnt;
-    green_led_toggle();
+    if(0) green_led_toggle();
   }
   return cnt;
 }
