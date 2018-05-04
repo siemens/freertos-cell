@@ -33,7 +33,23 @@
 
 extern sio_fd_t ser_dev;
 
+static __attribute__((unused)) void hyp_putchar(int c)
+{
+  asm volatile(
+      "mov r0, #8;"  /* code: JAILHOUSE_HC_DEBUG_CONSOLE_PUTC */
+      "mov r1, %0;"  /* arg1 */
+      "hvc #0x4a48;" /* JAILHOUSE_HVC_CODE */
+      : /* outputs */
+      : "r" (c) /* inputs */
+      : "r0", "r1" /* clobbered */
+      );
+}
+
+#if 0
+#define putchar(c) hyp_putchar(c)
+#else
 #define putchar(c) serial_putchar(ser_dev, c)
+#endif
 
 static void printchar(char **str, int c)
 {
