@@ -36,16 +36,16 @@ extern sio_fd_t ser_dev;
 static __attribute__((unused)) void hyp_putchar(int c)
 {
   asm volatile(
-      "mov r0, #8;"
-      "mov r1, %0;"
-      "hvc #0;"
+      "mov r0, #8;"  /* code: JAILHOUSE_HC_DEBUG_CONSOLE_PUTC */
+      "mov r1, %0;"  /* arg1 */
+      "hvc #0x4a48;" /* JAILHOUSE_HVC_CODE */
       : /* outputs */
       : "r" (c) /* inputs */
       : "r0", "r1" /* clobbered */
       );
 }
 
-#if 0
+#if 1
 #define putchar(c) hyp_putchar(c)
 #else
 #define putchar(c) ((void)(c))
