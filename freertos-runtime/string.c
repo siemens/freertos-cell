@@ -187,8 +187,24 @@ char *strchr(const char *s, int c)
 
 void *memset(void *s, int c, size_t count)
 {
-	char *xs = s;
-	while (count--)
-		*xs++ = c;
-	return s;
+  uint8_t u8 = (uint8_t)c;
+  uint32_t u32 = (uint32_t)c;
+  u32 = (u32 << 24) | (u32 << 16) | (u32 << 8) | u32;
+  uint8_t *sp = (uint8_t *)s;
+  /* Handle unaligned head */
+  while (count && ((uintptr_t)sp & 3)) {
+    count--;
+    *sp++ = u8;
+  }
+  /* Faster 32 bit copy */
+  uint32_t *lp = (uint32_t *)(void *)sp;
+  while (count >= 4) {
+    *lp++ = u32;
+    count -= 4;
+  }
+  /* Handle tail */
+  sp = (uint8_t *)(void *)lp;
+  while (count--)
+    *sp++ = u8;
+  return s;
 }
