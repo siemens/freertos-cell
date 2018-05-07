@@ -1000,7 +1000,7 @@ void inmate_main(void)
       "uartread", /* The text name assigned to the task - for debug only; not used by the kernel. */
       configMINIMAL_STACK_SIZE, /* The size of the stack to allocate to the task. */
       NULL,                                                            /* The parameter passed to the task */
-      tskIDLE_PRIORITY+1, /* The priority assigned to the task. */
+      tskIDLE_PRIORITY+2, /* The priority assigned to the task. */
       NULL );
 
   if(0) for(i = 0; i < 20; i++) {
