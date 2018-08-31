@@ -20,13 +20,14 @@
 struct {
 	struct jailhouse_system header;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[22];
+	struct jailhouse_memory mem_regions[26];
 	struct jailhouse_irqchip irqchips[1];
 	struct jailhouse_pci_device pci_devices[1];
 } __attribute__((packed)) config = {
 	.header = {
 		.signature = JAILHOUSE_SYSTEM_SIGNATURE,
 		.revision = JAILHOUSE_CONFIG_REVISION,
+		.flags = JAILHOUSE_SYS_VIRTUAL_DEBUG_CONSOLE,
 		.hypervisor_memory = {
 			.phys_start = 0x7c000000,
 			.size = 0x4000000,
@@ -37,10 +38,9 @@ struct {
 			/* .clock_reg = 0x01c2006c, */
 			/* .gate_nr = 16 */
 			/* .divider = 0x0d, */
-			.flags = JAILHOUSE_CON1_TYPE_8250 |
-				 JAILHOUSE_CON1_ACCESS_MMIO |
-				 JAILHOUSE_CON1_REGDIST_4 |
-				 JAILHOUSE_CON2_TYPE_ROOTPAGE,
+			.type = JAILHOUSE_CON_TYPE_8250,
+			.flags = JAILHOUSE_CON_ACCESS_MMIO |
+				 JAILHOUSE_CON_REGDIST_4,
 		},
 		.platform_info = {
 			.pci_mmconfig_base = 0x2000000,
@@ -79,9 +79,30 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
+		/* PIO */ {
+			.phys_start = 0x01C20800,
+			.virt_start = 0x01C20800,
+			.size = 0xfc,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
+		/* Security System */ {
+			.phys_start = 0x01C15000,
+			.virt_start = 0x01C15000,
+			.size = 0x00001000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
 		/* MMC */ {
 			.phys_start = 0x01c0f000,
 			.virt_start = 0x01c0f000,
+			.size = 0x00001000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
+		/* USB 0 */ {
+			.phys_start = 0x01C13000,
+			.virt_start = 0x01C13000,
 			.size = 0x00001000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
@@ -211,6 +232,13 @@ struct {
 			.size = 0x1000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32
+		},
+		/* SRAM controller */ {
+			.phys_start = 0x01C00000,
+			.virt_start = 0x01C00000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
 		},
 		/* Framebuffer */ {
 			.phys_start = 0x7f736000,
