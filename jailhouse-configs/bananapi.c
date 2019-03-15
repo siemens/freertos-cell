@@ -20,7 +20,7 @@
 struct {
 	struct jailhouse_system header;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[26];
+	struct jailhouse_memory mem_regions[30];
 	struct jailhouse_irqchip irqchips[1];
 	struct jailhouse_pci_device pci_devices[1];
 } __attribute__((packed)) config = {
@@ -237,6 +237,34 @@ struct {
 			.phys_start = 0x01C00000,
 			.virt_start = 0x01C00000,
 			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
+		},
+		/* HDMI */ {
+			.phys_start = 0x01C16000,
+			.virt_start = 0x01C16000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
+		},
+		/* LCD 0 */ {
+			.phys_start = 0x01C0C000,
+			.virt_start = 0x01C0C000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
+		},
+		/* LCD 1 */ {
+			.phys_start = 0x01C0D000,
+			.virt_start = 0x01C0D000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
+		},
+		/* DE_BE0 */ {
+			.phys_start = 0x01E60000,
+			.virt_start = 0x01E60000,
+			.size = (128<<10),
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_IO_32,
 		},
