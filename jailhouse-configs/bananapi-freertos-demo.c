@@ -1,7 +1,7 @@
 #include <jailhouse/types.h>
 #include <jailhouse/cell-config.h>
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define __ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #define MBYTE(m) ((m)<<20)
 
 #define GUEST_MEM_START 0x7a800000
@@ -21,9 +21,9 @@ struct {
 		.flags = JAILHOUSE_CELL_PASSIVE_COMMREG | JAILHOUSE_SYS_VIRTUAL_DEBUG_CONSOLE,
 
 		.cpu_set_size = sizeof(config.cpus),
-		.num_memory_regions = ARRAY_SIZE(config.mem_regions),
-		.num_irqchips = ARRAY_SIZE(config.irqchips),
-		.num_pci_devices = ARRAY_SIZE(config.pci_devices),
+		.num_memory_regions = __ARRAY_SIZE(config.mem_regions),
+		.num_irqchips = __ARRAY_SIZE(config.irqchips),
+		.num_pci_devices = __ARRAY_SIZE(config.pci_devices),
 
 		.vpci_irq_base = 123,
 	},
@@ -90,7 +90,7 @@ struct {
 				0x00000000, 0x00000000, 0x00000000,
 			},
 			/* Take the last entry of the mem_regions array */
-			.shmem_region = ARRAY_SIZE(config.mem_regions) - 1,
+			.shmem_region = __ARRAY_SIZE(config.mem_regions) - 1,
 			.shmem_protocol = JAILHOUSE_SHMEM_PROTO_VETH,
 		},
 	},
