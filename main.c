@@ -365,7 +365,7 @@ static void testTask( void *pvParameters )
   vTaskDelete( NULL );
 }
 
-#define PCI_SHARED_MEM_BASE 0x7bf00000
+#define PCI_SHARED_MEM_BASE (0x7bf00000+0x1000)
 #define RW_FLAG pcimem[0]
 #define FRAME_NO pcimem[1]
 #define SYNC_LOST pcimem[2]
